@@ -38,3 +38,11 @@ def test_html_autocontido(dados):
     assert "fetch(" not in html and 'type="module"' not in html and not re.search(r"^\s*import ", html, re.M)
     assert set(re.findall(r"https://[^\s\"'<>)]+", html)) == {CHARTJS}
     assert len(html.encode("utf-8")) < 5 * 1024 * 1024
+
+
+def test_atalhos_pre_calculados(dados):
+    at, dias = dados["atalhos"], dados["dias"]
+    hoje = len(dias) - 1
+    assert dias[at[hoje]["D-7"]] == "2026-11-12"
+    assert dias[at[hoje]["D-1"]] == "2026-11-18"
+    assert at[0]["D-1"] is None and at[0]["mes_anterior"] is None   # fora da janela de 70 dias: sem atalho

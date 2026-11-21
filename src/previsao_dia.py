@@ -86,8 +86,9 @@ def prever(acum: pd.DataFrame, diaria: pd.DataFrame, dia, hora: int) -> dict | N
     r = _previsoes(dias, A, T, i, hora)
     if r is None:
         return None
-    prev, lo, hi, esp = r
     real_h = np.append(A[hora - 8][i], A[hora - 8][i].sum())
+    prev, lo, hi = (np.maximum(x, real_h) for x in r[:3])   # o dia nunca fecha abaixo do que já foi feito
+    esp = r[3]
     nomes = list(fases) + ["__TOTAL__"]
     saida = {n: {"prev": round(float(prev[k]), 1), "lo": round(float(lo[k]), 1), "hi": round(float(hi[k]), 1),
                  "esperado": round(float(esp[k]), 1), "realizado": int(real_h[k])} for k, n in enumerate(nomes)}

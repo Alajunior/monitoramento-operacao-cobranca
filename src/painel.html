@@ -109,8 +109,10 @@ footer{max-width:1280px;margin:0 auto;padding:4px 16px 24px;color:var(--muted);f
     <div class="kpis" id="kpis"></div>
     <details class="ler"><summary>📖 Como ler</summary>Cada cartão compara o período <b>atual</b> com o de
       <b>comparação</b>. ▲ verde = 3% ou mais acima; ▼ vermelho = 3% ou mais abaixo. CPC único conta contratos
-      distintos (o mesmo cliente alcançado duas vezes conta uma). CPC único/Estoque mostra quanto da carteira foi
-      alcançado.</details>
+      distintos (o mesmo cliente alcançado duas vezes conta uma); em horas escolhidas, conta quem foi alcançado pela
+      primeira vez no dia naquelas horas. CPC único/Estoque mostra quanto da carteira foi alcançado. No modo período,
+      se o período atual inclui o "hoje" (ainda incompleto), o último dia da comparação também é cortado na mesma
+      hora, para a conta ser justa.</details>
   </div>
 
   <div class="card">
@@ -161,8 +163,9 @@ footer{max-width:1280px;margin:0 auto;padding:4px 16px 24px;color:var(--muted);f
     <div class="cockpit" id="cardsMes"></div>
     <div class="graf" style="height:300px;margin-top:10px"><canvas id="gMes"></canvas></div>
     <details class="ler"><summary>📖 Como ler</summary>Acumulado do mês por dia útil. Azul = realizado; laranja
-      tracejado = previsão até o fim do mês, com faixa de 90%; cinzas = mesmos dias úteis dos dois meses anteriores.
-      A previsão é a média de dois ritmos (linear e por dia da semana), corrigida pelo viés histórico.</details>
+      tracejado = previsão até o fim do mês, com faixa (alvo de 90%; no placar, cobriu ~80% dos dias, porque só há
+      6 meses de histórico para calibrar); cinzas = mesmos dias úteis dos dois meses anteriores. A previsão é a média
+      de dois ritmos (linear e por dia da semana), corrigida pelo viés histórico.</details>
   </div>
 
   <div class="card">
@@ -177,7 +180,8 @@ footer{max-width:1280px;margin:0 auto;padding:4px 16px 24px;color:var(--muted);f
       erro em % do volume. <b>Viés</b> positivo = previsão otimista. <b>Cobertura</b> = % de dias em que o real caiu
       dentro da faixa; o alvo é 80%. Cada dia foi previsto só com os dias anteriores a ele. ⚠ marca os dias em que o
       erro médio das 12h nos últimos 5 dias passou do limite: foi quando a tarde começou a render menos (nova escala
-      de turno) e o ajuste de viés levou alguns dias para absorver.</details>
+      de turno). O alerta se desliga quando o erro médio volta para baixo do limite, mas a previsão ainda erra mais
+      que o normal nos dias seguintes: o ajuste de viés absorve a mudança aos poucos.</details>
   </div>
 </section>
 </main>
@@ -198,23 +202,25 @@ const S = {hora: 12, aba: "hh", modo: "dia", agr: "acum", esp: new Set([9, 10, 1
 const graficos = {};
 
 // ---------------- agregação ----------------
-function horasDoDia(d, horas) { return d === HOJE ? horas.filter(h => h <= S.hora) : horas; }
+function horasDoDia(d, horas, corte) { return (d === HOJE || corte) ? horas.filter(h => h <= S.hora) : horas; }
 function canais() { return S.canal === "" ? [...Array(NC).keys()] : [D.canais.indexOf(S.canal)]; }
 function fasesVis() { return [...Array(NF).keys()].filter(f => !S.ocultas.has(D.fases[f])); }
 
-function agrDia(d, horas, fases) {
-  const hs = horasDoDia(d, horas), cs = canais(), r = {fups: 0, cpc: 0, cpca: 0, boleto: 0, risco: 0, propostas: 0};
+function agrDia(d, horas, fases, corte = false) {
+  const hs = horasDoDia(d, horas, corte), cs = canais(), r = {fups: 0, cpc: 0, cpca: 0, boleto: 0, risco: 0, propostas: 0};
   for (const h of hs) for (const f of fases) for (const c of cs)
     for (const m in r) r[m] += D.producao[m][d][h - 8][f][c];
-  const hmax = hs.length ? Math.max(...hs) : null;
-  r.cpc_unico = hmax == null ? 0 : fases.reduce((s, f) => s + D.cpcu_acum[d][f][hmax - 8], 0);
+  // CPC único das horas escolhidas = contratos alcançados pela 1ª vez no dia nessas horas (nunca maior que o CPC)
+  const novos = (f, h) => D.cpcu_acum[d][f][h - 8] - (h > 8 ? D.cpcu_acum[d][f][h - 9] : 0);
+  r.cpc_unico = hs.reduce((s, h) => s + fases.reduce((t, f) => t + novos(f, h), 0), 0);
+  r.nh = hs.length;
   r.operadores = hs.length ? Math.max(...hs.map(h => D.operadores[d][h - 8])) : 0;
   r.estoque = fases.reduce((s, f) => s + D.estoque[d][f], 0);
   return r;
 }
 function somar(lista) {
   const r = {}; for (const x of lista) for (const k in x) r[k] = (r[k] || 0) + x[k];
-  r.operadores /= lista.length || 1; r.estoque /= lista.length || 1; return r;
+  r.operadores /= lista.length || 1; r.estoque /= lista.length || 1; return r;   // nh = total de horas somadas
 }
 function horasSel() {
   return S.agr === "acum" ? D.horas.filter(h => h <= S.hora) : [...S.esp].sort((a, b) => a - b);
@@ -222,9 +228,12 @@ function horasSel() {
 function periodos() {   // devolve {A: [dias], B: [dias], horas}
   if (S.modo === "dia") return {A: [+$("diaA").value], B: [+$("diaB").value], horas: horasSel()};
   const rng = (a, b) => { const x = [], i = +$(a).value, j = +$(b).value; for (let k = Math.min(i, j); k <= Math.max(i, j); k++) x.push(k); return x; };
-  return {A: rng("pA1", "pA2"), B: rng("pB1", "pB2"), horas: D.horas};
+  const A = rng("pA1", "pA2");
+  return {A, B: rng("pB1", "pB2"), horas: D.horas, corteB: A.includes(HOJE)};   // hoje parcial: B termina na mesma hora
 }
-function agr(dias, horas, fases) { return somar(dias.map(d => agrDia(d, horas, fases))); }
+function agr(dias, horas, fases, corte = false) {
+  return somar(dias.map((d, i) => agrDia(d, horas, fases, corte && i === dias.length - 1)));
+}
 function derivados(r) {
   const q = (a, b) => b ? a / b : null;
   return {...r, pct_cpc: q(r.cpc, r.fups), pct_cpca: q(r.cpca, r.fups), conversao: q(r.boleto, r.cpca),
@@ -245,8 +254,8 @@ const KPIS = [["FUPS", "fups", fmt.format], ["CPC", "cpc", fmt.format], ["CPC ú
 
 function renderKpis(A, B) {
   $("kpis").innerHTML = KPIS.map(([nome, k, f]) => {
-    const dd = delta(A[k], B[k]);
-    return `<div class="kpi"><div class="n">${nome}</div><div class="v">${A[k] == null ? "–" : f(A[k])}</div>
+    const vazio = !A.nh, dd = vazio ? {txt: "–", cls: "eq"} : delta(A[k], B[k]);   // hora futura do hoje: sem dado
+    return `<div class="kpi"><div class="n">${nome}</div><div class="v">${vazio || A[k] == null ? "–" : f(A[k])}</div>
       <div class="c">antes: ${B[k] == null ? "–" : f(B[k])} <span class="d ${dd.cls}">${dd.txt}</span></div></div>`;
   }).join("");
 }
@@ -255,8 +264,8 @@ const COLS = [["FUPS", "fups", fmt.format], ["CPC", "cpc", fmt.format], ["CPC ú
   ["Conversão", "conversao", x => pct(x)], ["Estoque", "estoque", fmt.format]];
 
 function renderTabela(p) {
-  const linhas = fasesVis().map(f => [D.fases[f], derivados(agr(p.A, p.horas, [f])), derivados(agr(p.B, p.horas, [f]))]);
-  linhas.push(["Total", derivados(agr(p.A, p.horas, fasesVis())), derivados(agr(p.B, p.horas, fasesVis()))]);
+  const linhas = fasesVis().map(f => [D.fases[f], derivados(agr(p.A, p.horas, [f])), derivados(agr(p.B, p.horas, [f], p.corteB))]);
+  linhas.push(["Total", derivados(agr(p.A, p.horas, fasesVis())), derivados(agr(p.B, p.horas, fasesVis(), p.corteB))]);
   const cab = "<tr><th>Fase</th>" + COLS.map(c => `<th>${c[0]}</th>`).join("") + "</tr>";
   const tabela = (titulo, cel) => `${titulo ? `<div class="sub" style="margin:8px 0 4px">${titulo}</div>` : ""}<table>${cab}` +
     linhas.map(([n, a, b]) => `<tr><td>${n === "Total" ? "<b>Total</b>" : n}</td>` + COLS.map(c => `<td>${cel(a, b, c)}</td>`).join("") + "</tr>").join("") + "</table>";
@@ -292,7 +301,7 @@ function renderConv(p) {
   const fs = fasesVis();
   grafico("gConv", {type: "bar", data: {labels: fs.map(f => D.fases[f]), datasets: [
     {label: "Atual", data: fs.map(f => derivados(agr(p.A, p.horas, [f])).pct_cpc * 100), backgroundColor: css("--s1"), borderRadius: 4},
-    {label: "Comparação", data: fs.map(f => derivados(agr(p.B, p.horas, [f])).pct_cpc * 100), backgroundColor: css("--text-2") + "88", borderRadius: 4}]},
+    {label: "Comparação", data: fs.map(f => derivados(agr(p.B, p.horas, [f], p.corteB)).pct_cpc * 100), backgroundColor: css("--text-2") + "88", borderRadius: 4}]},
     options: baseOpts({scales: {y: {title: {display: true, text: "% CPC"}}},
       plugins: {legend: {position: "bottom"}, tooltip: {callbacks: {label: c => `${c.dataset.label}: ${c.raw.toFixed(1).replace(".", ",")}%`}}}})});
 }
@@ -307,7 +316,7 @@ function renderFunil(A, B) {
 }
 function renderHH() {
   const p = periodos(), fs = fasesVis();
-  const A = derivados(agr(p.A, p.horas, fs)), B = derivados(agr(p.B, p.horas, fs));
+  const A = derivados(agr(p.A, p.horas, fs)), B = derivados(agr(p.B, p.horas, fs, p.corteB));
   renderKpis(A, B); renderTabela(p); renderCurva(p); renderConv(p); renderFunil(A, B);
 }
 
@@ -362,7 +371,7 @@ const NOMES_IND = {fups: "FUPS", cpc: "CPC", cpc_unico: "CPC único", cpca: "CPC
 function renderMes() {
   const m = D.mes[S.ind];
   $("cardsMes").innerHTML = [["Realizado no mês", fmt.format(m.realizado_ate)], ["Previsão de fechamento", fmt.format(m.prev)],
-    ["Faixa de 90%", fmt.format(m.lo) + " – " + fmt.format(m.hi)]]
+    ["Faixa (alvo 90%)", fmt.format(m.lo) + " – " + fmt.format(m.hi)]]
     .map(([n, v]) => `<div class="kpi"><div class="n">${n}</div><div class="v">${v}</div></div>`).join("");
   const lab = m.curva.map(c => dataBR(c.dia)), ult = m.curva.findIndex(c => c.realizado_acum == null) - 1;
   const ponte = k => m.curva.map((c, i) => i === ult ? c.realizado_acum : c[k]);
@@ -388,17 +397,16 @@ function renderPlacar() {
       (u.erro >= 0 ? "+" : "") + pct(u.erro), u.dentro ? "✔" : "✖", (u.erro_5d > D.alerta.limite ? "⚠ " : "") + pct(u.erro_5d)]));
 }
 function renderPM() { renderPrev(); renderMes(); renderPlacar(); }
-function render() { $("horaTxt").textContent = S.hora + "h"; S.aba === "hh" ? renderHH() : renderPM(); }
+function render() { $("horaTxt").textContent = S.hora + "h"; marcarAtalhos(); S.aba === "hh" ? renderHH() : renderPM(); }
 
 // ---------------- controles ----------------
-function idxAtalho(d, tipo) {
-  const alvo = new Date(D.dias[d] + "T00:00:00");
-  if (tipo === "D-1") alvo.setDate(alvo.getDate() - 1);
-  else if (tipo === "D-7") alvo.setDate(alvo.getDate() - 7);
-  else alvo.setMonth(alvo.getMonth() - 1);
-  const iso = alvo.toISOString().slice(0, 10);
-  let k = d; while (k > 0 && D.dias[k] > iso) k--;
-  return k;
+function idxAtalho(d, tipo) { return D.atalhos[d][tipo]; }   // pré-calculado em Python; null = fora da janela
+function marcarAtalhos() {
+  document.querySelectorAll("[data-atalho]").forEach(b => b.disabled = idxAtalho(+$("diaA").value, b.dataset.atalho) == null);
+  document.querySelectorAll("[data-patalho]").forEach(b => {
+    const t = b.dataset.patalho === "30" ? "mes_anterior" : "D-7";
+    b.disabled = idxAtalho(+$("pA1").value, t) == null || idxAtalho(+$("pA2").value, t) == null;
+  });
 }
 function grupo(attr, fn) {
   document.querySelectorAll(`[data-${attr}]`).forEach(b => b.addEventListener("click", () => {

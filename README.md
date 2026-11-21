@@ -31,7 +31,7 @@ Cada gráfico tem uma caixa **📖 Como ler**.
 |---|---|---|
 | **Operação sintética** | 18 meses de dias úteis, 8h–20h, 4 fases de atraso, 2 canais. Turno com picos, segunda forte e sexta fraca, começo de mês forte. Cada contrato é sorteado, então **CPC único** (contratos distintos) é menor que **CPC**. Dois episódios de mudança | [`dados/gerar_operacao.py`](dados/gerar_operacao.py) |
 | **Previsão do dia** | Razão de funil: total do dia ÷ acumulado até a hora, com mais peso nos dias recentes (meia-vida de 30 dias), mais ajuste de viés e faixa de 80% calculada **fora da amostra** | [`src/previsao_dia.py`](src/previsao_dia.py) |
-| **Previsão do mês** | Média de dois ritmos (linear e por dia da semana), corrigida pelo viés histórico no mesmo ponto do mês, com faixa de 90% | [`src/previsao_mes.py`](src/previsao_mes.py) |
+| **Previsão do mês** | Média de dois ritmos (linear e por dia da semana), corrigida pelo viés histórico no mesmo ponto do mês, com faixa de alvo 90% (no placar cobriu ~80%: só 6 meses para calibrar) | [`src/previsao_mes.py`](src/previsao_mes.py) |
 | **Placar** | Cada dia passado é previsto **só com os dias anteriores a ele** e comparado com o realizado | [`src/placar.py`](src/placar.py) |
 | **Ofensor** | Decomposição LMDI do CPC único em estoque × esforço × taxa, com uma frase automática: "puxado pela queda de estoque na fase 31-90" | [`src/ofensor.py`](src/ofensor.py) |
 | **Painel** | O Python calcula tudo, inclusive a previsão de cada hora, e grava **um HTML** com os dados embutidos e gráficos em Chart.js. O GitHub Pages publica | [`src/montar_painel.py`](src/montar_painel.py), [`src/painel.html`](src/painel.html) |
@@ -48,12 +48,12 @@ Cada gráfico tem uma caixa **📖 Como ler**.
 
 - **O erro cai ao longo do dia** (6,5% → 3,2%) porque, quanto mais do dia já aconteceu, menos falta prever.
 - **O viés fica perto de zero**, e a faixa cobre perto dos 80% prometidos: ela é honesta, nem estreita nem larga demais.
-- **No mês**, o erro vai de 8,3% na primeira semana para 0,5% na última.
+- **No mês**, o erro vai de 8,3% na primeira semana para 0,5% na última. A faixa do mês mira 90%, mas cobriu ~80% dos dias, e a primeira semana ainda tem viés otimista (+8%). Com só 6 meses de registro para calibrar, é o ponto a melhorar.
 
 ### Os dois episódios de mudança
 
 - **Out/2026, o estoque da fase 31-90 cai 25%.** O volume cai, mas o **ritmo do dia não muda**: a razão de funil continua certa e a previsão não piora. Mudança de volume não exige retreino.
-- **Nov/2026, a tarde passa a render 15% menos** (nova escala de turno). O ritmo muda e a previsão das 12h passa a errar para cima. O **alerta de deriva** (erro médio das 12h nos últimos 5 dias acima de 8%) dispara de 09 a 12/11, com pico de 13,5%. O ajuste de viés absorve a mudança em cerca de uma semana, e no "hoje" simulado o erro já voltou para 6,5%.
+- **Nov/2026, a tarde passa a render 15% menos** (nova escala de turno). O ritmo muda e a previsão das 12h passa a errar para cima. O **alerta de deriva** (erro médio das 12h nos últimos 5 dias acima de 8%) dispara de 09 a 12/11, com pico de 13,5%. O alerta se desliga em uma semana, quando o erro médio de 5 dias volta para baixo de 8%, e no "hoje" simulado está em 6,5%. A previsão, porém, ainda erra mais que o normal nos dias seguintes (veja a tabela dos últimos 10 dias): o ajuste de viés absorve a mudança aos poucos. É o caso em que um retreino com peso maior nos dias recentes ajudaria.
 
 ## Como rodar
 

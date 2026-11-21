@@ -90,12 +90,16 @@ def montar_dados(t: dict, hoje="2026-11-19", dias_registro=250, dias_registro_me
     placar_fases = {f: _r((g["real"] - g["prev"]).abs().sum() / g["real"].sum(), 4)
                     for f, g in pf[pf["escopo"] != "__TOTAL__"].groupby("escopo")}
 
+    # atalhos de comparação de cada dia da janela (índice na janela, ou None se o alvo cair fora dela)
+    pos = {d: k for k, d in enumerate(dias)}
+    atalhos = [{tipo: pos.get(atalho(todos, d, tipo)) for tipo in ("D-1", "D-7", "mes_anterior")} for d in dias]
+
     def registros(df):
         return json.loads(df.to_json(orient="records", date_format="iso", double_precision=4))
 
     return {
         "hoje": f"{hoje:%Y-%m-%d}", "fases": fases, "canais": canais, "horas": HORAS,
-        "dias": [f"{d:%Y-%m-%d}" for d in dias], "metricas": METRICAS,
+        "dias": [f"{d:%Y-%m-%d}" for d in dias], "metricas": METRICAS, "atalhos": atalhos,
         "producao": producao, "operadores": oper.tolist(), "cpcu_acum": cpcu.tolist(),
         "fups_acum": fups_acum.tolist(), "estoque": estoque.tolist(),
         "previsao_hoje": previsao, "ofensor": ofensor,

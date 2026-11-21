@@ -63,3 +63,32 @@ def test_erro_12h_recente():
                         "escopo": "__TOTAL__", "prev": [100, 110, 110, 90, 90, 100],
                         "real": [100, 100, 100, 100, 100, 100]})
     assert abs(erro_12h_recente(reg, n=5) - 0.08) < 1e-9
+
+
+def test_faixa_nunca_abaixo_do_realizado():
+    acum, diaria = _historico(150)
+    hoje = diaria["dia"].max()
+    acum.loc[(acum.dia == hoje) & (acum.hora >= 19), "cpc_unico_acum"] += 400   # dia muito acima do normal no fim
+    r = prever(acum, diaria, hoje, 20)
+    for v in [r["total"], *r["fases"].values()]:
+        assert v["lo"] >= v["realizado"] and v["prev"] >= v["realizado"] and v["hi"] >= v["prev"]
+
+
+def test_sem_olhar_o_proprio_dia():
+    acum, diaria = _historico(150)
+    dia = diaria["dia"].unique()[-10]
+    antes = prever(acum, diaria, dia, 12)
+    diaria2 = diaria.copy()
+    diaria2.loc[diaria2.dia == dia, "cpc_unico"] *= 3   # o total do próprio dia não pode influenciar
+    assert prever(acum, diaria2, dia, 12) == antes
+
+
+def test_faixa_nunca_abaixo_do_realizado_nos_dados(pasta_pequena):
+    from src.indicadores import carregar, cpc_unico_acumulado, serie_diaria
+    t = carregar(pasta_pequena)
+    acum, diaria = cpc_unico_acumulado(t["cpc_eventos"]), serie_diaria(t)
+    for dia in sorted(diaria["dia"].unique())[-15:]:
+        for h in (18, 19, 20):
+            r = prever(acum, diaria, dia, h)
+            for v in [r["total"], *r["fases"].values()]:
+                assert v["lo"] >= v["realizado"] and v["prev"] >= v["realizado"], (dia, h, v)
