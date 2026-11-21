@@ -171,6 +171,8 @@ def montar_carteira(t: dict, slug: str, nome: str, hoje, com_mes: bool,
                               for d in du for r in [prever_mes(diaria, d, "cpc_unico")]])
     fechados = []
     for m, g in reg_mes[reg_mes["dia"].dt.to_period("M") < mes].groupby(reg_mes["dia"].dt.to_period("M")):
+        if g["dia"].dt.day.min() > 7:   # o registro começou no meio deste mês: placar incompleto, fica de fora
+            continue
         tr = placar_mes(g).set_index("trecho")
         fechados.append({"mes": m.strftime("%m/%Y"), "real": _r(g["real"].iloc[0], 0),
                          **{k: _r(tr["wmape"].get(k), 4) for k in ["inicio", "meio", "3/4", "final"]},

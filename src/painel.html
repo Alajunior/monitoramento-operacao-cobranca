@@ -1,457 +1,1068 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Monitoramento da Operação</title>
-<meta name="description" content="Painel de monitoramento de uma operação de cobrança (dados sintéticos) com previsão de fechamento do dia e do mês.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitoramento da Operação · Hora a Hora</title>
+<meta name="description" content="Painel de monitoramento de uma operação de cobrança (dados sintéticos): produção hora a hora, previsão de fechamento do dia e do mês, confiabilidade e placar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="__FONTES__">
 <script src="__CHARTJS__"></script>
 <style>
-:root{
-  --bg:#f6f6f4; --surface:#fcfcfb; --surface-2:#f0efec; --border:#e4e3df;
-  --text:#0b0b0b; --text-2:#52514e; --muted:#7a7974;
-  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
-  --good:#0ca30c; --bad:#d03b3b; --accent:#2a78d6;
+/* =================== temas (tokens) =================== */
+body{
+  --bg:radial-gradient(1200px 640px at 82% -12%,#2b2620 0%,#171410 55%,#0d0b08 92%);
+  --text:#ece6da;--strong:#fff;--t2:#b8ae9c;--t3:#c9bfa8;--t4:#b3a68c;--axis:#9c927f;
+  --ac:#D4A72C;--ac2:#B98A3D;--acs:#f0dca0;--ac-at:#e8c468;--ac-cp:#ffc18a;
+  --acg:linear-gradient(135deg,#D4A72C,#B98A3D);--ac-rgb:212,167,44;--ac-anim:#D4A72C;--ac-anim-glow:rgba(212,167,44,.5);
+  --bd:rgba(212,167,44,.2);--bd-h:rgba(212,167,44,.25);--bd-i:rgba(212,167,44,.3);
+  --glass:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+  --kpi:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+  --cbox:rgba(255,255,255,.02);--inp:#1c1712;--sticky:#181410;--thead:#1e1810;--tot1:#241e14;
+  --stripe:rgba(255,255,255,.03);--hover:rgba(212,167,44,.10);
+  --pos:#5be59a;--neg:#ff6b81;--flat:#b8ae9c;--warn:#ff9f43;
+  --chart-c:#f0dca0;--chart-b:rgba(212,167,44,.14);
+  --p-dot:rgba(212,167,44,.9);--p-line:212,167,44;--p-mouse:185,138,61;
+  --scheme:dark;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#121211; --surface:#1a1a19; --surface-2:#232321; --border:#383835;
-    --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e88;
-    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --good:#0ca30c; --bad:#e66767; --accent:#3987e5;
-  }
+body[data-theme="midnight"]{
+  --bg:radial-gradient(1200px 640px at 82% -12%,#0f2647 0%,#081729 55%,#040b16 92%);
+  --text:#dbe7fb;--t2:#9fb8d9;--t3:#bcd0ec;--t4:#9fb8d9;--axis:#7f97b8;
+  --ac:#ff7a59;--ac2:#3b5b8c;--acs:#ffd2c2;--ac-at:#ff9d80;--ac-cp:#8fc1ff;
+  --acg:linear-gradient(135deg,#ff7a59,#3b5b8c);--ac-rgb:255,122,89;--ac-anim:#ff9d80;--ac-anim-glow:rgba(255,122,89,.5);
+  --bd:rgba(59,91,140,.42);--bd-h:rgba(59,91,140,.6);--bd-i:rgba(59,91,140,.55);
+  --inp:#081729;--sticky:#050d1a;--thead:#0a1830;--tot1:#0f2040;--hover:rgba(59,91,140,.22);
+  --chart-c:#9fb8d9;--chart-b:rgba(59,91,140,.25);
+  --p-dot:rgba(255,122,89,.85);--p-line:59,91,140;--p-mouse:255,122,89;
 }
-:root[data-theme="dark"]{
-  --bg:#121211; --surface:#1a1a19; --surface-2:#232321; --border:#383835;
-  --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e88;
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --good:#0ca30c; --bad:#e66767; --accent:#3987e5;
+body[data-theme="light"]{
+  --bg:linear-gradient(180deg,#EDE6D8 0%,#F6F2E8 100%);
+  --text:#23262b;--strong:#2e2a1e;--t2:#475569;--t3:#475569;--t4:#475569;--axis:#64748b;
+  --ac:#8a6a1f;--ac2:#B98A3D;--acs:#6b5518;--ac-at:#8a6a1f;--ac-cp:#9a5b00;
+  --acg:linear-gradient(135deg,#8a6a1f,#B98A3D);--ac-rgb:138,106,31;--ac-anim:#8a6a1f;--ac-anim-glow:rgba(138,106,31,.35);
+  --bd:#dbe4ee;--bd-h:#d6cfbf;--bd-i:#cbd5e1;
+  --glass:#fff;--kpi:linear-gradient(180deg,#fff,#f8fbff);--cbox:#f8fafc;--inp:#fff;
+  --sticky:#fff;--thead:#2e2a1e;--tot1:#eef1f6;--stripe:#f8fafc;--hover:#F3ECD9;
+  --pos:#166534;--neg:#991b1b;--flat:#94a3b8;
+  --chart-c:#334155;--chart-b:rgba(15,23,42,.08);
+  --p-dot:rgba(139,106,31,.55);--p-line:139,106,31;--p-mouse:185,138,61;--scheme:light;
 }
+/* =================== base =================== */
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px}
-.topo{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;max-width:1280px;margin:0 auto}
-h1{font-size:18px;margin:0}
-.sub{color:var(--text-2);font-size:12px}
-main{max-width:1280px;margin:0 auto;padding:16px}
-.abas{display:flex;gap:6px}
-button,select,input{font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
-button{cursor:pointer}
-button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.hora{display:flex;align-items:center;gap:8px}
-.hora input{width:150px;padding:0}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px}
-.card h2{font-size:15px;margin:0 0 10px}
-.linha{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
-.rot{color:var(--text-2);font-size:12px;margin-right:2px}
-.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.kpi{background:var(--surface-2);border-radius:10px;padding:10px}
-.kpi .n{font-size:12px;color:var(--text-2)}
-.kpi .v{font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
-.kpi .c{font-size:12px;color:var(--text-2)}
-.d{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
-.d.up{color:var(--good)} .d.down{color:var(--bad)} .d.eq{color:var(--text-2)}
-.grade2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:14px}
-.tab{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
-th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
-th:first-child,td:first-child{text-align:left}
-th{font-size:12px;color:var(--text-2);font-weight:600}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chips label{background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:3px 10px;font-size:12px;cursor:pointer}
-.graf{position:relative;height:280px}
-details.ler{margin-top:8px;background:var(--surface-2);border-radius:8px;padding:6px 10px;color:var(--text-2);font-size:13px}
-details.ler summary{cursor:pointer;color:var(--text)}
-.cockpit{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
-.aviso{border-radius:8px;padding:8px 12px;font-size:13px;background:var(--surface-2)}
-.aviso.alerta{border-left:4px solid var(--bad)} .aviso.ok{border-left:4px solid var(--good)}
-.frase{font-size:14px;margin:8px 0}
-.oculto{display:none}
-@media (max-width:700px){header{position:static}.graf{height:240px}}
-footer{max-width:1280px;margin:0 auto;padding:4px 16px 24px;color:var(--muted);font-size:12px}
+html{color-scheme:var(--scheme)}
+body{margin:0;padding:22px;min-height:100vh;background:var(--bg);background-attachment:fixed;color:var(--text);
+  font:14px/1.45 Inter,'Segoe UI',Arial,sans-serif}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.wrap{max-width:1560px;margin:0 auto;position:relative;z-index:1}
+b,strong{font-weight:700}
+.muted{color:var(--t2);font-size:12.5px}
+/* header */
+header{display:flex;flex-wrap:wrap;align-items:center;gap:14px 18px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--bd-h)}
+h1{font:800 clamp(18px,2.2vw,28px)/1.15 Sora,Inter,sans-serif;margin:0;color:var(--strong)}
+h1 span{color:var(--ac)}
+.sub{font-size:13px;color:var(--t2);margin-top:3px}
+.sp{flex:1}
+.pill{border-radius:10px;padding:7px 13px;background:linear-gradient(135deg,#241e14,#6b5518);box-shadow:0 0 22px rgba(185,138,61,.45);
+  font:800 10px Inter;letter-spacing:.08em;text-transform:uppercase;color:#f0dca0;text-align:center;line-height:1.35}
+body[data-theme="midnight"] .pill{background:linear-gradient(135deg,#0a1830,#3b5b8c);box-shadow:0 0 22px rgba(59,91,140,.55);color:#dbe7fb}
+body[data-theme="light"] .pill{background:linear-gradient(135deg,#2e2a1e,#6b5518);box-shadow:0 8px 20px rgba(0,0,0,.18)}
+.agora{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2)}
+.agora input{accent-color:var(--ac);width:140px}
+.agora b{font:800 15px Sora;color:var(--ac);min-width:36px}
+/* segmented, tabs, chips */
+.seg{display:inline-flex;align-items:center;background:rgba(255,255,255,.05);border:1px solid var(--bd-i);border-radius:30px;padding:4px;gap:3px;flex-wrap:wrap}
+body[data-theme="light"] .seg{background:#fff}
+.seg>b{font-size:11px;color:var(--t2);padding:6px 10px}
+.seg button{border:0;background:transparent;color:var(--t3);font:700 12px Inter;padding:7px 15px;border-radius:24px;cursor:pointer;transition:.2s}
+.seg button.on{background:var(--acg);color:#04121f}
+body[data-theme="light"] .seg button.on,body[data-theme="midnight"] .seg button.on{color:#fff}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tabs button{border:1px solid var(--bd-i);background:rgba(255,255,255,.04);color:var(--t3);font:700 13px Inter;padding:9px 20px;border-radius:30px;cursor:pointer;transition:.2s}
+.tabs button.on{background:var(--acg);border-color:transparent;color:#fff;box-shadow:0 8px 20px rgba(var(--ac-rgb),.35)}
+body[data-theme="light"] .tabs button{background:#fff;color:#475569}
+body[data-theme="light"] .tabs button.on{color:#fff;background:var(--acg)}
+.viewbar{margin:-4px 0 16px}
+/* glass */
+.glass{background:var(--glass);border:1px solid var(--bd);border-radius:16px;padding:18px;margin-bottom:16px;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 12px 30px rgba(0,0,0,.32)}
+body[data-theme="light"] .glass{box-shadow:0 2px 10px rgba(15,23,42,.06)}
+.ctitle{font:700 15px Sora,Inter,sans-serif;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;color:var(--strong)}
+.ctitle .muted{font:400 12.5px Inter}
+.chart-help{font-size:12px;line-height:1.5;color:var(--t4);background:rgba(var(--ac-rgb),.07);border-left:3px solid rgba(var(--ac-rgb),.5);
+  border-radius:0 8px 8px 0;padding:8px 12px;margin:2px 0 12px}
+.chart-help b{color:var(--acs)}
+body[data-theme="light"] .chart-help{background:#f1f5f9;border-left-color:#8a6a1f}
+/* controles */
+.linha{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px}
+.cbox{background:var(--cbox);border:1px solid var(--bd);border-radius:12px;padding:14px}
+.cbox h4{margin:0 0 10px;font:800 11px Inter;letter-spacing:.08em;text-transform:uppercase}
+.cbox.a h4{color:var(--ac-at)} .cbox.c h4{color:var(--ac-cp)}
+.flds{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+label.fld{display:flex;flex-direction:column;gap:4px;font:700 11px Inter;color:var(--t2)}
+select,input[type=date]{font:13px Inter;color:var(--text);background:var(--inp);border:1px solid var(--bd-i);border-radius:9px;padding:8px 10px;min-width:120px}
+.chk{font-size:13px;color:var(--acs);margin-top:18px;display:flex;gap:6px;align-items:center;cursor:pointer}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.preset{font:700 12px Inter;padding:6px 14px;border-radius:30px;background:rgba(185,138,61,.1);border:1px solid rgba(185,138,61,.3);color:var(--acs);cursor:pointer;transition:.2s}
+.preset:hover{background:rgba(185,138,61,.2)}
+body[data-theme="light"] .preset{background:#f1f5f9;color:#334155;border-color:#cbd5e1}
+.hmodeseg{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.hmodeseg span{font-size:12px;opacity:.75}
+.hmodeseg button{font:12px Inter;color:var(--text);background:transparent;padding:4px 10px;border-radius:8px;border:1px solid rgba(var(--ac-rgb),.35);cursor:pointer}
+.hmodeseg button.on{background:rgba(var(--ac-rgb),.25);border-color:rgba(var(--ac-rgb),.7);font-weight:600}
+#horasel{border:1px dashed rgba(var(--ac-rgb),.35);border-radius:10px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;margin-bottom:10px}
+#horasel label{display:flex;gap:4px;align-items:center;cursor:pointer}
+#horasel button{font:11px Inter;border-radius:7px;padding:3px 9px;border:1px solid var(--bd-i);background:transparent;color:var(--text);cursor:pointer}
+.dim{opacity:.4;pointer-events:none}
+.aviso-lime{background:rgba(149,216,72,.18);border:1px solid rgba(149,216,72,.5);border-radius:9px;padding:7px 11px;font-size:12.5px;margin:10px 0}
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:16px}
+.kpi{background:var(--kpi);border:1px solid var(--bd);border-left:4px solid var(--flat);border-radius:14px;padding:15px 16px;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.kpi .h{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.kpi .l{font:700 11px Inter;letter-spacing:.05em;text-transform:uppercase;color:var(--t2)}
+.kpi .bdg{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;flex:none}
+.kpi .v{font:800 24px Sora,Inter;margin-top:5px;color:var(--strong);transition:color .2s;font-variant-numeric:tabular-nums}
+.kpi .v.animating{color:var(--ac-anim);text-shadow:0 0 12px var(--ac-anim-glow)}
+.kpi .dl{font:700 12px Inter;margin-top:3px}
+.kpi.up{border-left-color:var(--pos);animation:kpiGlow 2.8s ease-in-out infinite}
+.kpi.down{border-left-color:var(--neg)}
+.kpi.up .bdg{background:rgba(91,229,154,.18);color:var(--pos);box-shadow:0 0 10px rgba(91,229,154,.35)}
+.kpi.down .bdg{background:rgba(255,107,129,.18);color:var(--neg);box-shadow:0 0 10px rgba(255,107,129,.35)}
+.kpi.flat .bdg{background:rgba(154,147,200,.16);color:var(--flat)}
+.kpi.nd .bdg{color:var(--flat)}
+.up-t{color:var(--pos)} .down-t{color:var(--neg)} .flat-t,.nd-t{color:var(--flat)} .warn-t{color:var(--warn)}
+@keyframes kpiGlow{0%,100%{box-shadow:0 0 0 1px rgba(91,229,154,.20),0 0 10px rgba(91,229,154,.12)}50%{box-shadow:0 0 0 1px rgba(91,229,154,.34),0 0 20px rgba(91,229,154,.28)}}
+@keyframes kpiGlowLight{0%,100%{box-shadow:0 0 0 1px rgba(22,163,74,.16),0 0 8px rgba(22,163,74,.10)}50%{box-shadow:0 0 0 1px rgba(22,163,74,.30),0 0 16px rgba(22,163,74,.22)}}
+body[data-theme="light"] .kpi{border-color:#e7eef7;border-left-width:5px}
+body[data-theme="light"] .kpi.up{border-left-color:#16a34a;animation-name:kpiGlowLight}
+body[data-theme="light"] .kpi.down{border-left-color:#dc2626}
+body[data-theme="light"] .kpi.up .bdg{background:#dcfce7;color:#166534;box-shadow:none}
+body[data-theme="light"] .kpi.down .bdg{background:#fee2e2;color:#991b1b;box-shadow:none}
+/* toolbar, chips, tabela */
+.toolbar{display:flex;flex-wrap:wrap;gap:14px;margin-left:auto}
+.fasebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 12px}
+.fasebar-l{font:800 11px Inter;letter-spacing:.08em;color:var(--t2)}
+.chip{display:inline-flex;align-items:center;gap:7px;font:700 12px Inter;padding:5px 12px;border-radius:30px;border:1px solid var(--bd-i);
+  background:rgba(255,255,255,.04);color:var(--acs);cursor:pointer;transition:.18s}
+.chip:hover{border-color:rgba(var(--ac-rgb),.6)}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--ac);box-shadow:0 0 8px rgba(var(--ac-rgb),.7)}
+.chip.off{opacity:.45;text-decoration:line-through}
+.chip.off i{background:#6b6255;box-shadow:none}
+.tblwrap{overflow:auto;max-height:560px;border-radius:10px;border:1px solid var(--bd)}
+table.t{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+.t th,.t td{padding:9px 8px;text-align:right;white-space:nowrap}
+.t th{position:sticky;top:0;z-index:2;background:var(--thead);font:700 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:var(--t3)}
+body[data-theme="light"] .t th{color:#fff}
+.t th:first-child,.t td:first-child{position:sticky;left:0;text-align:left;background:var(--sticky);z-index:1}
+.t th:first-child{z-index:3;background:var(--thead)}
+.t tbody tr:nth-child(even) td{background-image:linear-gradient(var(--stripe),var(--stripe))}
+.t tbody tr:hover td{background-image:linear-gradient(var(--hover),var(--hover))}
+.t tr.tot td{font-weight:800;border-top:2px solid rgba(var(--ac-rgb),.4);background-image:linear-gradient(rgba(var(--ac-rgb),.10),rgba(var(--ac-rgb),.10))}
+.t tr.tot td:first-child{background:var(--tot1)}
+.t tr.fx td{font-size:12px;color:var(--t3);background-image:linear-gradient(rgba(var(--ac-rgb),.045),rgba(var(--ac-rgb),.045))}
+.t tr.fx td:first-child{padding-left:20px}
+.t td b{color:var(--strong)}
+.dlt{display:block;font:700 10.5px 'JetBrains Mono',monospace}
+.sub-t{font:700 14px Sora;margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--bd);color:var(--strong)}
+/* gráficos */
+.chart{position:relative;width:100%;height:300px}
+.chart.h330{height:330px} .chart.h340{height:340px} .chart.h320{height:320px} .chart.h260{height:260px} .chart.h230{height:230px} .chart.h270{height:270px}
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mini-t{font:800 12px Inter;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.mini-t.a{color:var(--ac-at)} .mini-t.c{color:var(--ac-cp)}
+.charts{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+.mesgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mesgrid>.glass{margin-bottom:16px}
+.mesgrid>*,.charts>*,.dual>*,.controls>*{min-width:0}
+/* mês */
+.relogio{font-size:14px;margin-bottom:6px}
+.bar8{height:8px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden}
+body[data-theme="light"] .bar8,body[data-theme="light"] .bar5{background:#e2e8f0}
+.bar8>i{display:block;height:100%;background:linear-gradient(90deg,var(--ac2),var(--ac))}
+.mcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:12px;margin-top:14px}
+.mcard{background:var(--kpi);border:1px solid var(--bd);border-radius:14px;padding:13px 14px;text-align:left;color:var(--text);cursor:pointer;font:13px Inter;transition:.15s}
+.mcard:hover{border-color:rgba(var(--ac-rgb),.55)}
+.mcard.on{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
+.mcl{font:800 11px Inter;letter-spacing:.05em;text-transform:uppercase;color:var(--t2)}
+.mcv{font:800 24px Sora;color:var(--pos);margin:4px 0 2px}
+body[data-theme="light"] .mcv{color:#0f7a43}
+.mcs{font-size:12px;color:var(--t2);line-height:1.5}
+.bar5{height:5px;border-radius:4px;background:rgba(255,255,255,.08);margin:6px 0;overflow:hidden}
+.bar5>i{display:block;height:100%;background:var(--ac)}
+/* story */
+.st-b{border:1px solid rgba(var(--ac-rgb),.4);background:rgba(255,255,255,.04);color:var(--text);border-radius:8px;font:700 12px Inter;padding:5px 10px;cursor:pointer}
+.st-dots{display:flex;gap:8px;margin:4px 0 12px;flex-wrap:wrap}
+.st-dot{width:28px;height:28px;border-radius:50%;border:1px solid rgba(var(--ac-rgb),.45);background:transparent;color:var(--text);font:700 12px Inter;cursor:pointer}
+.st-dot.on{background:var(--ac);color:#04121f;border-color:var(--ac)}
+.st-box{background:rgba(0,0,0,.18);border-left:3px solid var(--ac);border-radius:0 8px 8px 0;padding:12px 14px;min-height:96px;margin-bottom:14px}
+body[data-theme="light"] .st-box{background:#f1f5f9}
+.st-tit{font:700 14px Sora;color:var(--ac);margin-bottom:4px}
+.st-txt{font-size:14px;line-height:1.55;transition:opacity .16s}
+.st-txt .sn{font:800 17px Sora;color:var(--strong)}
+.sg{display:inline-block;background:rgba(91,229,154,.1);border:1px solid rgba(91,229,154,.35);border-radius:8px;padding:2px 8px;margin:2px 3px 2px 0;font-size:12.5px}
+.st-row{display:grid;grid-template-columns:190px 1fr;gap:10px;align-items:center;margin:6px 0;transition:opacity .45s}
+.st-row.hid{opacity:.15}.st-row.hid .seg2,.st-row.hid .st-mk,.st-row.hid .st-out{visibility:hidden}
+.st-lab{font-size:12px;text-align:right;color:var(--t2)}
+.st-track{position:relative;height:30px;background:rgba(255,255,255,.03);border-radius:6px}
+body[data-theme="light"] .st-track{background:#eef1f6}
+.seg2{position:absolute;top:3px;bottom:3px;border-radius:4px;width:0;transition:width .9s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;overflow:hidden}
+.seg2 span{font:700 11px Inter;color:#04121f;padding:0 6px;white-space:nowrap}
+.st-mk{position:absolute;top:0;bottom:0;width:2px;background:var(--strong)}
+.st-mk span{position:absolute;top:-16px;left:4px;font:700 11px Inter;white-space:nowrap;color:var(--strong)}
+.st-out{position:absolute;top:7px;font:700 11px Inter;color:var(--strong);white-space:nowrap}
+.st-axis{position:relative;height:16px;font-size:10.5px;color:var(--axis)}
+.st-axis span{position:absolute;transform:translateX(-50%)}
+.st-axis span:first-child{transform:none}.st-axis span:last-child{transform:translateX(-100%)}
+#cardStory{overflow:hidden}
+.listra-v{background:repeating-linear-gradient(45deg,rgba(91,229,154,.95) 0 4px,rgba(91,229,154,.45) 4px 8px)}
+.listra-r{background:repeating-linear-gradient(45deg,rgba(255,107,129,.55) 0 4px,rgba(255,107,129,.15) 4px 8px)}
+/* previsão do dia */
+.alerta{background:rgba(255,107,129,.16);border:1px solid #ff6b81;border-radius:10px;padding:9px 13px;color:#ffd0d8;font:700 13px Inter;margin-bottom:12px}
+body[data-theme="light"] .alerta{color:#991b1b}
+.selo{font:700 12.5px Inter;color:var(--pos)}
+.escopo button,.modo-prev button{padding:4px 11px;border-radius:8px;font:700 12px Inter;cursor:pointer;margin:0 6px 6px 0}
+.escopo button{border:1px solid rgba(185,138,61,.25);background:rgba(255,255,255,.05);color:var(--acs)}
+.escopo button.on{background:linear-gradient(135deg,#B98A3D,#D4A72C);color:#04121f}
+.escopo button span{opacity:.75;font-weight:600}
+.modo-prev button{border:1px solid rgba(91,229,154,.35);background:rgba(255,255,255,.05);color:#bff5d6}
+.modo-prev button.on{background:linear-gradient(135deg,#2f9e66,#5be59a);color:#04121f}
+body[data-theme="light"] .modo-prev button{color:#166534} body[data-theme="light"] .modo-prev button.on{color:#04121f}
+.rot{font:800 11px Inter;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);margin-right:6px}
+.tiles{display:flex;flex-wrap:wrap;gap:11px;margin:10px 0 12px}
+.tile{flex:1;min-width:150px;background:rgba(255,255,255,.045);border:1px solid rgba(185,138,61,.18);border-radius:14px;padding:13px 15px}
+body[data-theme="light"] .tile{background:#fff;border-color:#dbe4ee}
+.tile .tl{font:800 11px Inter;letter-spacing:.05em;text-transform:uppercase;color:var(--t2)}
+.tile .tv{font:800 27px/1.15 Sora;margin:4px 0;color:var(--strong)}
+.tile .ts{font-size:12px;color:var(--t2)}
+.narr{padding:11px 14px;background:rgba(0,0,0,.18);border-left:3px solid #B98A3D;border-radius:0 8px 8px 0;font-size:14px;line-height:1.5;margin-bottom:12px}
+body[data-theme="light"] .narr{background:#f1f5f9}
+.mes-insight{background:rgba(91,229,154,.08);border-left:3px solid #5be59a;border-radius:0 8px 8px 0;padding:8px 12px;font-size:13.5px;margin-bottom:10px}
+.mtab{width:100%;font-size:12.5px;margin-top:10px;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.mtab th{text-align:right;font-weight:700;color:var(--t2);border-bottom:1px solid rgba(var(--ac-rgb),.25);padding:6px 8px}
+.mtab td{text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06)}
+body[data-theme="light"] .mtab td{border-bottom-color:#e2e8f0}
+.mtab th:first-child,.mtab td:first-child{text-align:left}
+.tabwrap{overflow-x:auto}
+.funil{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.mfs{flex:1;min-width:110px;background:rgba(255,255,255,.04);border:1px solid rgba(var(--ac-rgb),.18);border-radius:12px;padding:12px}
+.mfs.fim{flex:0 0 150px;margin-left:6px;border-style:dashed}
+.mfl{font:800 11px Inter;letter-spacing:.05em;text-transform:uppercase;color:var(--t2)}
+.mfv{font:800 22px Sora;margin:4px 0;color:var(--strong)}
+.mfa{min-width:46px;display:flex;flex-direction:column;justify-content:center;align-items:center;font:700 13px Inter;color:var(--ac)}
+.conf-row{display:flex;flex-wrap:wrap;gap:11px;margin-bottom:12px}
+footer{margin-top:24px;padding-top:14px;border-top:1px solid rgba(var(--ac-rgb),.18);text-align:center;font:600 12px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--t2)}
+.oculto{display:none!important}
+/* responsivo */
+@media(max-width:1200px){.kpis{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:980px){.charts,.mesgrid{grid-template-columns:1fr}}
+@media(max-width:900px){.controls{grid-template-columns:1fr}}
+@media(max-width:840px){.dual{grid-template-columns:1fr}}
+@media(max-width:820px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){body{padding:12px}.st-row{grid-template-columns:105px 1fr}.mfs.fim{flex:1 1 100%;margin-left:0}.toolbar{margin-left:0}.mfa{min-width:100%;flex-direction:row;gap:8px}}
+@media(max-width:560px){.kpis{grid-template-columns:repeat(2,1fr)}.kpi .v{font-size:20px}.tile .tv{font-size:22px}.agora input{width:110px}}
+@media(prefers-reduced-motion:reduce){.kpi.up{animation:none;box-shadow:0 0 0 1px rgba(91,229,154,.25),0 0 14px rgba(91,229,154,.20)}
+  .seg2,.st-row,.st-txt{transition:none!important}}
 </style>
 </head>
-<body>
+<body data-theme="midnight">
+<canvas id="bg" aria-hidden="true"></canvas>
+<div class="wrap">
 <header>
-  <div class="topo">
-    <div><h1>Monitoramento da Operação</h1>
-      <div class="sub">Carteira de cobrança fictícia · dados sintéticos · "hoje" simulado: <b id="hojeTxt"></b></div></div>
-    <div class="hora"><span class="rot">Agora:</span><input type="range" id="hora" min="9" max="20" step="1" value="12"
-      aria-label="Hora simulada"><b id="horaTxt"></b></div>
-    <div class="abas" role="tablist">
-      <button class="on" data-aba="hh" role="tab">⏱ Hora a hora</button>
-      <button data-aba="pm" role="tab">📈 Previsões &amp; Mês</button>
-      <button id="tema" title="Alternar tema" aria-label="Alternar tema claro/escuro">◐</button>
-    </div>
+  <div>
+    <h1>Monitoramento <span>Operação</span> · Hora a Hora</h1>
+    <div class="sub">carteira · produção × estoque por fase · <b>tabela dinâmica</b> (escolha dia/hora para comparar) · dados sintéticos</div>
   </div>
+  <div class="sp"></div>
+  <div class="agora" title="O painel real é ao vivo; aqui o momento é simulado"><span>⏱ Agora (simulado)</span>
+    <input type="range" id="agora" min="9" max="20" step="1" value="12" aria-label="Hora simulada"><b id="agoraTxt">12h</b></div>
+  <div class="pill">Projeto de portfólio<br>dados sintéticos</div>
+  <div class="seg" id="segTema" role="group" aria-label="Tema"><b>Versão</b>
+    <button data-tema="midnight">Midnight</button><button data-tema="dark">Dark</button><button data-tema="light">Light</button></div>
 </header>
+<div class="tabs" id="tabs" role="tablist"></div>
+<div class="seg viewbar" id="viewbar"><b>Visão</b><button data-view="hh" class="on">⏱ Hora a hora</button><button data-view="pm">📈 Previsões &amp; Mês</button></div>
 
-<main>
-<!-- ======================= HORA A HORA ======================= -->
-<section id="aba-hh">
-  <div class="card">
-    <h2>Comparação</h2>
-    <div class="linha"><span class="rot">Modo</span>
-      <button class="on" data-modo="dia">Dia × Dia</button><button data-modo="periodo">Período × Período</button></div>
+<!-- ============================ HORA A HORA ============================ -->
+<section id="v-hh">
+  <div class="glass">
+    <div class="ctitle">🎛 Comparação dinâmica <span class="sp"></span><span class="muted">Escolha livremente os períodos — a análise recalcula na hora.</span></div>
+    <div class="linha"><div class="seg" id="segModo"><b>Modo</b><button data-modo="dia" class="on">Dia × Dia</button><button data-modo="periodo">Período × Período</button></div></div>
     <div id="ctl-dia">
-      <div class="linha"><span class="rot">Atual</span><select id="diaA"></select>
-        <span class="rot">contra</span><select id="diaB"></select>
-        <button data-atalho="D-1">D-1</button><button data-atalho="D-7">D-7</button><button data-atalho="mes_anterior">Mês anterior</button></div>
-      <div class="linha"><span class="rot">Horas</span>
-        <button class="on" data-agr="acum">Acumulado até agora</button><button data-agr="esp">Horas específicas</button>
-        <span id="horasEsp" class="chips oculto"></span></div>
+      <div class="linha hmodeseg"><span>Filtro de hora</span><button data-hm="ate" class="on">Até a hora</button><button data-hm="esp">Horas específicas</button></div>
+      <div id="horasel" class="oculto"></div>
+      <div id="aproxwarn" class="aviso-lime oculto">⚠️ Com mais de uma hora escolhida, <b>CPC único</b> e <b>Operadores</b> ficam aproximados: contam quem foi alcançado pela 1ª vez no dia nessas horas e o pico de operadores entre elas.</div>
+      <div class="controls">
+        <div class="cbox a"><h4>Período atual</h4><div class="flds">
+          <label class="fld">Dia<select id="diaA"></select></label><label class="fld">Hora<select id="horaA"></select></label>
+          <label class="chk"><input type="checkbox" id="acumA" checked> Acumulado até a hora</label></div></div>
+        <div class="cbox c"><h4>Período de comparação</h4><div class="flds">
+          <label class="fld">Dia<select id="diaB"></select></label><label class="fld">Hora<select id="horaB"></select></label>
+          <label class="chk"><input type="checkbox" id="acumB" checked> Acumulado até a hora</label></div>
+          <div class="presets" id="presetsDia"></div></div>
+      </div>
     </div>
-    <div id="ctl-periodo" class="oculto">
-      <div class="linha"><span class="rot">A</span><select id="pA1"></select><span class="rot">até</span><select id="pA2"></select>
-        <span class="rot">B</span><select id="pB1"></select><span class="rot">até</span><select id="pB2"></select>
-        <button data-patalho="30">A − 1 mês</button><button data-patalho="7">A − 7 dias</button></div>
+    <div id="ctl-per" class="oculto">
+      <div class="muted" style="margin-bottom:8px">Totais somados no período. <span id="notaCorte"></span></div>
+      <div class="controls">
+        <div class="cbox a"><h4>Período atual (A)</h4><div class="flds"><label class="fld">De<input type="date" id="pA1"></label><label class="fld">Até<input type="date" id="pA2"></label></div></div>
+        <div class="cbox c"><h4>Período de comparação (B)</h4><div class="flds"><label class="fld">De<input type="date" id="pB1"></label><label class="fld">Até<input type="date" id="pB2"></label></div>
+          <div class="presets"><button class="preset" data-pp="mes">B = A − 1 mês</button><button class="preset" data-pp="sem">B = A − 7 dias</button></div></div>
+      </div>
     </div>
-    <div class="linha"><span class="rot">Canal</span><select id="canal"><option value="">Todos</option></select>
-      <span class="rot">Fases</span><span id="chipsFases" class="chips"></span></div>
-    <div class="kpis" id="kpis"></div>
-    <details class="ler"><summary>📖 Como ler</summary>Cada cartão compara o período <b>atual</b> com o de
-      <b>comparação</b>. ▲ verde = 3% ou mais acima; ▼ vermelho = 3% ou mais abaixo. CPC único conta contratos
-      distintos (o mesmo cliente alcançado duas vezes conta uma); em horas escolhidas, conta quem foi alcançado pela
-      primeira vez no dia naquelas horas. CPC único/Estoque mostra quanto da carteira foi alcançado. No modo período,
-      se o período atual inclui o "hoje" (ainda incompleto), o último dia da comparação também é cortado na mesma
-      hora, para a conta ser justa.</details>
   </div>
 
-  <div class="card">
-    <h2>Por fase</h2>
-    <div class="linha"><button class="on" data-vis="compacta">Compacta</button><button data-vis="detalhada">Detalhada</button></div>
-    <div class="tab" id="tabFase"></div>
-    <details class="ler"><summary>📖 Como ler</summary>Fase = faixa de atraso do contrato. Na visão compacta, cada
-      célula traz o valor atual e a variação contra a comparação. Na detalhada, as três tabelas (atual, comparação,
-      variação) aparecem separadas.</details>
+  <div class="kpis" id="kpis"></div>
+
+  <div class="glass">
+    <div class="ctitle">📊 Desempenho por fase
+      <div class="toolbar">
+        <div class="seg" id="segVis"><b>Visão</b><button data-vis="compacto" class="on">Compacto</button><button data-vis="detalhado">Detalhado</button></div>
+        <div class="seg" id="segAberto"><b>Aberto por fase</b><button data-ab="0" class="on">Não</button><button data-ab="1">Sim</button></div>
+        <div class="seg" id="segCanal"><b>Canal</b></div>
+      </div></div>
+    <div class="fasebar" id="fasebar"></div>
+    <div id="tabela"></div>
+    <div class="muted" style="margin-top:8px">Compacto: valor do período atual e, abaixo, a variação contra a comparação. Detalhado: três tabelas (atual, comparação e variação). Estoque tem a cor invertida: cair é bom.</div>
   </div>
 
-  <div class="grade2">
-    <div class="card"><h2>Curva do dia</h2>
-      <div class="linha"><span class="rot">Indicador</span><select id="metCurva"><option value="fups">FUPS</option>
-        <option value="cpc">CPC</option><option value="cpca">CPCA</option><option value="boleto">Boletos</option></select></div>
-      <div class="graf"><canvas id="gCurva"></canvas></div>
-      <details class="ler"><summary>📖 Como ler</summary>Barras = o indicador em cada hora no período atual; linha
-        tracejada = a comparação. Mostra se a operação está rendendo no ritmo de sempre e em que hora ficou para trás.</details></div>
-    <div class="card"><h2>Taxa de CPC por fase</h2><div class="graf"><canvas id="gConv"></canvas></div>
-      <details class="ler"><summary>📖 Como ler</summary>%CPC = contatos com a pessoa certa ÷ acionamentos. Fases
-        com atraso maior costumam ter taxa menor: o cliente some.</details></div>
+  <div class="glass">
+    <div class="ctitle"><span id="tituloCurva">⏱ Curva intradiária · Atual × Comparação</span><span class="sp"></span>
+      <div class="seg" id="segExib"><b>Exibição</b><button data-ex="lado" class="on">Lado a lado</button><button data-ex="sobrepor">Sobrepor</button></div></div>
+    <div class="chart-help" id="helpCurva"></div>
+    <div id="curvaZona"></div>
   </div>
-  <div class="card"><h2>Funil</h2><div class="graf" style="height:220px"><canvas id="gFunil"></canvas></div>
-    <details class="ler"><summary>📖 Como ler</summary>Do acionamento ao boleto: de cada 100 acionamentos, quantos
-      viram contato com a pessoa certa (CPC), quantos viram acordo (CPCA) e quantos viram boleto.</details></div>
+
+  <div class="charts">
+    <div class="glass"><div class="ctitle">🎯 Conversão por fase</div>
+      <div class="chart-help">📖 Cada par de barras é uma fase: <b>dourado</b> = período atual, <b>laranja</b> = comparação. Conversão = boletos ÷ acordos: de cada acordo fechado, quantos viraram boleto. Barra dourada mais alta = a fase converteu melhor agora.</div>
+      <div class="chart"><canvas id="chConv"></canvas></div></div>
+    <div class="glass"><div class="ctitle">🔻 Funil de produção</div>
+      <div class="chart-help">📖 Do acionamento ao boleto, no período atual (<b>dourado</b>) e na comparação (<b>laranja</b>). Cada etapa é uma parte da anterior; a queda entre elas mostra onde se perde mais.</div>
+      <div class="chart"><canvas id="chFunil"></canvas></div></div>
+  </div>
 </section>
 
-<!-- ======================= PREVISÕES & MÊS ======================= -->
-<section id="aba-pm" class="oculto">
-  <div class="card">
-    <h2>Fechamento do dia — CPC único</h2>
-    <div class="linha" id="botoesFase"></div>
-    <div class="cockpit" id="cockpit"></div>
-    <div class="frase" id="frase"></div>
-    <div class="aviso" id="alerta"></div>
-    <div class="linha" style="margin-top:10px"><button id="revelar">👁 Revelar o fechamento real</button><span class="rot" id="revelado"></span></div>
-    <div class="graf" style="height:320px"><canvas id="gDia"></canvas></div>
-    <details class="ler" open><summary>📖 Como ler</summary>A linha azul é o CPC único acumulado até <b>agora</b>
-      (mova o controle "Agora" no topo). A laranja tracejada é a previsão de como o dia vai fechar, com a faixa onde o
-      fechamento deve cair em 8 de cada 10 dias. A cinza pontilhada é o <b>esperado</b> (média dos últimos 20 dias).
-      A previsão usa a <b>razão de funil</b>: em dias normais, o total do dia é um múltiplo estável do que já foi
-      feito até a hora. Clique em "Revelar" para ver como o dia realmente terminou.</details>
-  </div>
-
-  <div class="card">
-    <h2>Fechamento do mês</h2>
-    <div class="linha"><span class="rot">Indicador</span><select id="indMes"></select></div>
-    <div class="cockpit" id="cardsMes"></div>
-    <div class="graf" style="height:300px;margin-top:10px"><canvas id="gMes"></canvas></div>
-    <details class="ler"><summary>📖 Como ler</summary>Acumulado do mês por dia útil. Azul = realizado; laranja
-      tracejado = previsão até o fim do mês, com faixa (alvo de 90%; no placar, cobriu ~80% dos dias, porque só há
-      6 meses de histórico para calibrar); cinzas = mesmos dias úteis dos dois meses anteriores. A previsão é a média
-      de dois ritmos (linear e por dia da semana), corrigida pelo viés histórico.</details>
-  </div>
-
-  <div class="card">
-    <h2>Placar: a previsão acerta?</h2>
-    <div class="grade2">
-      <div><div class="sub" style="margin-bottom:6px">Previsão do dia, por hora de corte (dias passados)</div><div class="tab" id="tabPlacar"></div></div>
-      <div><div class="sub" style="margin-bottom:6px">Previsão do mês, por trecho do mês</div><div class="tab" id="tabPlacarMes"></div></div>
-    </div>
-    <div class="sub" style="margin:12px 0 6px">Últimos 10 dias (previsão das 12h)</div>
-    <div class="tab" id="tabUltimos"></div>
-    <details class="ler"><summary>📖 Como ler</summary><b>Erro (WMAPE)</b> = soma dos erros ÷ soma do realizado: o
-      erro em % do volume. <b>Viés</b> positivo = previsão otimista. <b>Cobertura</b> = % de dias em que o real caiu
-      dentro da faixa; o alvo é 80%. Cada dia foi previsto só com os dias anteriores a ele. ⚠ marca os dias em que o
-      erro médio das 12h nos últimos 5 dias passou do limite: foi quando a tarde começou a render menos (nova escala
-      de turno). O alerta se desliga quando o erro médio volta para baixo do limite, mas a previsão ainda erra mais
-      que o normal nos dias seguintes: o ajuste de viés absorve a mudança aos poucos.</details>
-  </div>
+<!-- ============================ PREVISÕES & MÊS ============================ -->
+<section id="v-pm" class="oculto">
+  <div class="glass" id="cardMes"></div>
+  <div class="glass" id="cardStory"></div>
+  <div class="glass" id="cardCurvaMes"></div>
+  <div class="glass" id="cardDia"></div>
+  <div class="mesgrid"><div class="glass" id="cardCanal"></div><div class="glass" id="cardFunilMes"></div></div>
+  <div class="glass" id="cardConf"></div>
+  <div class="glass" id="cardPlacar"></div>
 </section>
-</main>
-<footer>Projeto de portfólio · dados 100% sintéticos · gerado em Python, gráficos com Chart.js.</footer>
+<footer>Monitoramento da operação · projeto de portfólio · dados 100% sintéticos</footer>
+</div>
 
 <script>
 const DADOS = /*__DADOS__*/;
-const D = DADOS, NF = D.fases.length, NC = D.canais.length, HOJE = D.dias.length - 1;
-const M = Object.fromEntries(D.metricas.map((m, i) => [m, i]));
-const fmt = new Intl.NumberFormat("pt-BR", {maximumFractionDigits: 0});
-const fmtR = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL", maximumFractionDigits: 0});
-const pct = (x, c = 1) => x == null || !isFinite(x) ? "–" : (x * 100).toFixed(c).replace(".", ",") + "%";
-const dataBR = s => s.slice(8, 10) + "/" + s.slice(5, 7);
+/* ======================= utilidades ======================= */
 const $ = id => document.getElementById(id);
-const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const S = {hora: 12, aba: "hh", modo: "dia", agr: "acum", esp: new Set([9, 10, 11]), vis: "compacta",
-           canal: "", ocultas: new Set(), fasePrev: "__TOTAL__", revelar: false, ind: "cpc_unico"};
-const graficos = {};
+const QS = (s, el = document) => [...el.querySelectorAll(s)];
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const fI = new Intl.NumberFormat("pt-BR", {maximumFractionDigits: 0});
+const f1 = new Intl.NumberFormat("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1});
+const MENOS = "−";
+const sinal = (v, txt) => (v > 0 ? "+" : v < 0 ? MENOS : "") + txt;
+const nf = c => new Intl.NumberFormat("pt-BR", {minimumFractionDigits: c, maximumFractionDigits: c});
+const pct = (v, c = 1) => v == null || !isFinite(v) ? "—" : sinal(v, nf(c).format(Math.abs(v * 100)) + "%");
+const pctAbs = (v, c = 1) => v == null || !isFinite(v) ? "—" : nf(c).format(v * 100) + "%";
+const brl = v => v == null ? "—" : "R$ " + fI.format(v);
+const brlC = v => v == null ? "—" : v >= 1e6 ? "R$ " + f1.format(v / 1e6) + " mi" : v >= 1e3 ? "R$ " + fI.format(v / 1e3) + " mil" : "R$ " + fI.format(v);
+const dBR = s => s.slice(8, 10) + "/" + s.slice(5, 7);
+const dBRY = s => dBR(s) + "/" + s.slice(0, 4);
+const DSEM = ["seg", "ter", "qua", "qui", "sex"], DSEM_L = ["segunda", "terça", "quarta", "quinta", "sexta"];
+const dow = s => (new Date(s.slice(0, 10) + "T12:00:00").getDay() + 6) % 7;
+const css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
+const cor3 = v => v == null || !isFinite(v) ? "flat-t" : v >= .03 ? "up-t" : v <= -.03 ? "down-t" : "warn-t";
+const store = {get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+               set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }};
 
-// ---------------- agregação ----------------
-function horasDoDia(d, horas, corte) { return (d === HOJE || corte) ? horas.filter(h => h <= S.hora) : horas; }
-function canais() { return S.canal === "" ? [...Array(NC).keys()] : [D.canais.indexOf(S.canal)]; }
-function fasesVis() { return [...Array(NF).keys()].filter(f => !S.ocultas.has(D.fases[f])); }
+/* ======================= estado ======================= */
+const S = {cart: 0, view: "hh", agora: 12, modo: "dia", hm: "ate", horasEsp: new Set(), vis: "compacto", aberto: false,
+           canal: "", ocultas: new Set(), exib: "lado", escopo: "__TOTAL__", modoPrev: "vivo", ind: "cpc_unico", revelar: false,
+           st: {etapa: 0, timer: null, n: 0, dados: null}};
+const C = () => DADOS.carteiras[S.cart];
+const HOJE = () => C().dias.length - 1;
+const graf = {};
 
-function agrDia(d, horas, fases, corte = false) {
-  const hs = horasDoDia(d, horas, corte), cs = canais(), r = {fups: 0, cpc: 0, cpca: 0, boleto: 0, risco: 0, propostas: 0};
-  for (const h of hs) for (const f of fases) for (const c of cs)
-    for (const m in r) r[m] += D.producao[m][d][h - 8][f][c];
-  // CPC único das horas escolhidas = contratos alcançados pela 1ª vez no dia nessas horas (nunca maior que o CPC)
-  const novos = (f, h) => D.cpcu_acum[d][f][h - 8] - (h > 8 ? D.cpcu_acum[d][f][h - 9] : 0);
-  r.cpc_unico = hs.reduce((s, h) => s + fases.reduce((t, f) => t + novos(f, h), 0), 0);
+/* ======================= fundo animado (partículas) ======================= */
+(function particulas() {
+  const cv = $("bg"), ctx = cv.getContext("2d");
+  let W, H, P = [], mx = -9999, my = -9999;
+  function criar() {
+    W = cv.width = innerWidth; H = cv.height = innerHeight;
+    const n = Math.min(120, Math.floor(W * H / 14000));
+    P = Array.from({length: n}, () => ({x: Math.random() * W, y: Math.random() * H,
+      vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35}));
+  }
+  function frame(mover) {
+    const dot = css("--p-dot"), line = css("--p-line"), mouse = css("--p-mouse");
+    ctx.clearRect(0, 0, W, H);
+    for (const p of P) {
+      if (mover) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        const dx = p.x - mx, dy = p.y - my, dm = Math.hypot(dx, dy);
+        if (dm < 150 && dm > 0.01) { const f = (150 - dm) / 150 * .9; p.x += dx / dm * f; p.y += dy / dm * f; }
+      }
+      ctx.beginPath(); ctx.arc(p.x, p.y, 1.7, 0, Math.PI * 2); ctx.fillStyle = dot; ctx.fill();
+      const dm = Math.hypot(p.x - mx, p.y - my);
+      if (dm < 170) { ctx.strokeStyle = `rgba(${mouse},${(170 - dm) / 170 * .5})`; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(mx, my); ctx.stroke(); }
+    }
+    ctx.lineWidth = .8;
+    for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+      const d = Math.hypot(P[i].x - P[j].x, P[i].y - P[j].y);
+      if (d < 120) { ctx.strokeStyle = `rgba(${line},${(120 - d) / 120 * .22})`;
+        ctx.beginPath(); ctx.moveTo(P[i].x, P[i].y); ctx.lineTo(P[j].x, P[j].y); ctx.stroke(); }
+    }
+  }
+  function loop() { if (!document.hidden) frame(true); requestAnimationFrame(loop); }
+  addEventListener("resize", () => { criar(); if (RM) frame(false); });
+  addEventListener("mousemove", e => { mx = e.clientX; my = e.clientY; });
+  document.addEventListener("mouseout", e => { if (!e.relatedTarget) { mx = my = -9999; } });
+  criar();
+  if (RM) { frame(false); window.redesenharFundo = () => frame(false); } else { window.redesenharFundo = () => {}; loop(); }
+})();
+
+/* ======================= agregação ======================= */
+function canaisSel() { const c = C(); return S.canal === "" ? c.canais.map((_, i) => i) : [c.canais.indexOf(S.canal)]; }
+function fasesVis() { return C().fases.map((_, i) => i).filter(i => !S.ocultas.has(C().fases[i])); }
+function hsDia(d, horas, corte) { return (d === HOJE() || corte) ? horas.filter(h => h <= S.agora) : horas; }
+function agrDia(d, horas, fs, corte = false) {
+  const c = C(), hs = hsDia(d, horas, corte), cs = canaisSel(), r = {};
+  for (const m of c.metricas) r[m] = 0;
+  for (const h of hs) for (const f of fs) for (const ch of cs) for (const m of c.metricas) r[m] += c.producao[m][d][h - 8][f][ch];
+  const novos = (f, h) => c.cpcu_acum[d][f][h - 8] - (h > 8 ? c.cpcu_acum[d][f][h - 9] : 0);
+  r.cpc_unico = hs.reduce((s, h) => s + fs.reduce((t, f) => t + novos(f, h), 0), 0);
+  r.operadores = hs.length ? Math.max(...hs.map(h => c.operadores[d][h - 8])) : 0;
+  r.estoque = fs.reduce((s, f) => s + c.estoque[d][f], 0);
   r.nh = hs.length;
-  r.operadores = hs.length ? Math.max(...hs.map(h => D.operadores[d][h - 8])) : 0;
-  r.estoque = fases.reduce((s, f) => s + D.estoque[d][f], 0);
   return r;
 }
-function somar(lista) {
-  const r = {}; for (const x of lista) for (const k in x) r[k] = (r[k] || 0) + x[k];
-  r.operadores /= lista.length || 1; r.estoque /= lista.length || 1; return r;   // nh = total de horas somadas
+function somar(lst) {
+  const r = {}; for (const x of lst) for (const k in x) r[k] = (r[k] || 0) + (x[k] || 0);
+  if (lst.length) { r.operadores /= lst.length; r.estoque /= lst.length; }
+  r.nd = lst.length;
+  return r;
 }
-function horasSel() {
-  return S.agr === "acum" ? D.horas.filter(h => h <= S.hora) : [...S.esp].sort((a, b) => a - b);
+function agr(dias, horas, fs, corteUltimo = false) {
+  return somar(dias.map((d, i) => agrDia(d, horas, fs, corteUltimo && i === dias.length - 1)));
 }
-function periodos() {   // devolve {A: [dias], B: [dias], horas}
-  if (S.modo === "dia") return {A: [+$("diaA").value], B: [+$("diaB").value], horas: horasSel()};
-  const rng = (a, b) => { const x = [], i = +$(a).value, j = +$(b).value; for (let k = Math.min(i, j); k <= Math.max(i, j); k++) x.push(k); return x; };
-  const A = rng("pA1", "pA2");
-  return {A, B: rng("pB1", "pB2"), horas: D.horas, corteB: A.includes(HOJE)};   // hoje parcial: B termina na mesma hora
+const SHARE_DE = {fups: "fups", cpc: "cpc", cpca: "cpca", boleto: "boleto", risco: "risco", risco_cpc: "cpc", propostas: "cpc",
+                  pagos: "boleto", valor_pago: "risco", cpc_unico: "cpc", estoque: "estoque"};
+function agrFaixa(dias, horas, f, k, corteUltimo) {
+  const c = C(), mf = c.metricas_faixa;
+  const r = somar(dias.map((d, i) => {
+    const x = agrDia(d, horas, [f], corteUltimo && i === dias.length - 1), o = {nh: x.nh};
+    for (const m in SHARE_DE) o[m] = x[m] * c.faixa_share[d][f][k][mf.indexOf(SHARE_DE[m])];
+    return o;
+  }));
+  r.operadores = null;
+  return r;
 }
-function agr(dias, horas, fases, corte = false) {
-  return somar(dias.map((d, i) => agrDia(d, horas, fases, corte && i === dias.length - 1)));
+function deriv(r) {
+  const q = (a, b) => b ? a / b : null, nd = Math.max(r.nd || 1, 1);
+  return {...r, conv: q(r.boleto, r.cpca), pct_cpc: q(r.cpc, r.fups), pct_cpca: q(r.cpca, r.fups),
+          cpcu_est: q(r.cpc_unico, r.estoque), fups_est: q(r.fups, r.estoque),
+          fups_op: r.operadores ? r.fups / r.operadores / nd : null,
+          cpc_op: r.operadores ? r.cpc / r.operadores / nd : null,
+          bol_op: r.operadores ? r.boleto / r.operadores / nd : null};
 }
-function derivados(r) {
-  const q = (a, b) => b ? a / b : null;
-  return {...r, pct_cpc: q(r.cpc, r.fups), pct_cpca: q(r.cpca, r.fups), conversao: q(r.boleto, r.cpca),
-          cpcu_est: q(r.cpc_unico, r.estoque)};
+function horasDe(hSel, acum) {
+  if (S.hm === "esp") return [...S.horasEsp].sort((a, b) => a - b);
+  return acum ? C().horas.filter(h => h <= hSel) : [hSel];
 }
-function delta(a, b) {
-  if (a == null || b == null || !b) return {txt: "–", cls: "eq"};
-  const v = a / b - 1, cls = v >= 0.03 ? "up" : v <= -0.03 ? "down" : "eq";
-  return {txt: (cls === "up" ? "▲ " : cls === "down" ? "▼ " : "● ") + (v >= 0 ? "+" : "") + pct(v), cls};
+function periodos() {
+  if (S.modo === "dia") {
+    return {A: [+$("diaA").value], B: [+$("diaB").value], hA: horasDe(+$("horaA").value, $("acumA").checked),
+            hB: horasDe(+$("horaB").value, $("acumB").checked), corteB: false};
+  }
+  const rng = (a, b) => { const x = $(a).value, y = $(b).value, lo = x < y ? x : y, hi = x < y ? y : x;
+    return C().dias.map((d, i) => [d, i]).filter(([d]) => d >= lo && d <= hi).map(([, i]) => i); };
+  const A = rng("pA1", "pA2"), B = rng("pB1", "pB2");
+  return {A, B, hA: C().horas, hB: C().horas, corteB: A.includes(HOJE())};
+}
+function delta(a, b, inv = false) {
+  if (a == null || b == null) return {cls: "nd", txt: "—", v: null};
+  if (!b) return a ? {cls: inv ? "down" : "up", txt: "novo", v: null} : {cls: "flat", txt: "—", v: 0};
+  const v = a / b - 1;
+  if (Math.abs(v) <= .001) return {cls: "flat", txt: pct(v), v};
+  const bom = inv ? v < 0 : v > 0;
+  return {cls: bom ? "up" : "down", txt: pct(v), v};
 }
 
-// ---------------- hora a hora ----------------
-const KPIS = [["FUPS", "fups", fmt.format], ["CPC", "cpc", fmt.format], ["CPC único", "cpc_unico", fmt.format],
-  ["CPCA (acordos)", "cpca", fmt.format], ["Boletos", "boleto", fmt.format], ["Risco gerado", "risco", fmtR.format],
-  ["Propostas", "propostas", fmt.format], ["Operadores (pico)", "operadores", fmt.format],
-  ["% CPC", "pct_cpc", x => pct(x)], ["% CPCA", "pct_cpca", x => pct(x)], ["Conversão boleto/acordo", "conversao", x => pct(x)],
-  ["CPC único / Estoque", "cpcu_est", x => pct(x, 2)]];
+/* ======================= gráficos ======================= */
+function mk(id, cfg) {
+  if (graf[id]) { graf[id].destroy(); delete graf[id]; }
+  const el = $(id); if (!el) return;
+  Chart.defaults.color = css("--chart-c"); Chart.defaults.borderColor = css("--chart-b");
+  Chart.defaults.font.family = "Inter";
+  cfg.options = Object.assign({responsive: true, maintainAspectRatio: false, animation: false}, cfg.options || {});
+  graf[id] = new Chart(el, cfg);
+}
+function destruir(prefixo) { for (const k in graf) if (!prefixo || k.startsWith(prefixo)) { graf[k].destroy(); delete graf[k]; } }
+const leg = {position: "top", labels: {boxWidth: 12, filter: i => !i.text.startsWith("_")}};
+const pluginAgora = idx => ({id: "agora", afterDraw(ch) {
+  const x = ch.scales.x.getPixelForValue(idx), a = ch.chartArea, g = ch.ctx;
+  g.save(); g.setLineDash([4, 4]); g.strokeStyle = document.body.dataset.theme === "light" ? "rgba(15,23,42,.35)" : "rgba(255,255,255,.4)";
+  g.beginPath(); g.moveTo(x, a.top); g.lineTo(x, a.bottom); g.stroke();
+  g.setLineDash([]); g.fillStyle = css("--acs"); g.font = "11px Inter"; g.fillText("agora", x + 4, a.top + 12); g.restore();
+}});
 
+/* ======================= HORA A HORA ======================= */
+const KPIS = [["Acionamentos", "fups", "int"], ["CPC (contato certo)", "cpc", "int"], ["CPC único", "cpc_unico", "int"],
+  ["Acordos (CPCA)", "cpca", "int"], ["Boletos", "boleto", "int"], ["Propostas", "propostas", "int"],
+  ["Valor em risco contatado", "risco_cpc", "brl"], ["Risco gerado", "risco", "brl"], ["% Conversão", "conv", "pct"],
+  ["CPC por operador", "cpc_op", "dec"], ["Operadores", "operadores", "int"], ["Estoque", "estoque", "int", true]];
+const FMT = {int: v => fI.format(Math.round(v)), brl: v => brl(v), pct: v => pctAbs(v), pct2: v => pctAbs(v, 2), dec: v => f1.format(v)};
+const ultimoKpi = {};
 function renderKpis(A, B) {
-  $("kpis").innerHTML = KPIS.map(([nome, k, f]) => {
-    const vazio = !A.nh, dd = vazio ? {txt: "–", cls: "eq"} : delta(A[k], B[k]);   // hora futura do hoje: sem dado
-    return `<div class="kpi"><div class="n">${nome}</div><div class="v">${vazio || A[k] == null ? "–" : f(A[k])}</div>
-      <div class="c">antes: ${B[k] == null ? "–" : f(B[k])} <span class="d ${dd.cls}">${dd.txt}</span></div></div>`;
+  $("kpis").innerHTML = KPIS.map(([nome, k, tipo, inv]) => {
+    const vazio = !A.nh, d = vazio ? {cls: "nd", txt: "—"} : delta(A[k], B[k], inv);
+    const bdg = {up: "▲", down: "▼", flat: "→", nd: "•"}[d.cls];
+    const ok = !vazio && A[k] != null;
+    return `<div class="kpi ${d.cls}"><div class="h"><span class="l">${nome}</span><span class="bdg" aria-hidden="true">${bdg}</span></div>
+      <div class="v" data-k="${k}" data-tipo="${tipo}" data-to="${ok ? A[k] : ""}">${ok ? FMT[tipo](A[k]) : "—"}</div>
+      <div class="dl ${d.cls}-t">${d.txt}</div></div>`;
   }).join("");
+  QS("#kpis .v").forEach(el => {
+    const k = el.dataset.k, to = el.dataset.to === "" ? null : +el.dataset.to, tipo = el.dataset.tipo, de = ultimoKpi[k];
+    if (to == null) { delete ultimoKpi[k]; return; }
+    ultimoKpi[k] = to;
+    if (RM || de == null || de === to) return;
+    el.classList.add("animating");
+    const t0 = performance.now();
+    const passo = t => { const x = Math.min(1, (t - t0) / 650), e = 1 - Math.pow(1 - x, 3);
+      el.textContent = FMT[tipo](de + (to - de) * e);
+      if (x < 1) requestAnimationFrame(passo); else { el.textContent = FMT[tipo](to); el.classList.remove("animating"); } };
+    requestAnimationFrame(passo);
+  });
 }
-const COLS = [["FUPS", "fups", fmt.format], ["CPC", "cpc", fmt.format], ["CPC único", "cpc_unico", fmt.format],
-  ["CPCA", "cpca", fmt.format], ["Boletos", "boleto", fmt.format], ["% CPC", "pct_cpc", x => pct(x)],
-  ["Conversão", "conversao", x => pct(x)], ["Estoque", "estoque", fmt.format]];
-
+const COLS = [["Acionamentos", "fups", "int"], ["CPC", "cpc", "int"], ["Acordos", "cpca", "int"], ["Boletos", "boleto", "int"],
+  ["Propostas", "propostas", "int"], ["Valor risco CPC", "risco_cpc", "brl"], ["Risco gerado", "risco", "brl"],
+  ["CPC único", "cpc_unico", "int"], ["Operadores", "operadores", "int"], ["Estoque", "estoque", "int", true],
+  ["% CPC", "pct_cpc", "pct"], ["% Acordo", "pct_cpca", "pct"], ["% Conversão", "conv", "pct"],
+  ["CPC único / Estoque", "cpcu_est", "pct2"], ["Acion. / Estoque", "fups_est", "pct"],
+  ["Acion. / oper.", "fups_op", "dec"], ["CPC / oper.", "cpc_op", "dec"], ["Boletos / oper.", "bol_op", "dec"]];
+function linhasTabela(p) {
+  const c = C(), L = [];
+  for (const f of fasesVis()) {
+    L.push({nome: c.fases[f], A: deriv(agr(p.A, p.hA, [f])), B: deriv(agr(p.B, p.hB, [f], p.corteB)), cls: ""});
+    const fx = (c.faixas || {})[c.fases[f]] || [];
+    if (S.aberto && fx.length > 1) fx.forEach((nm, k) =>
+      L.push({nome: "└ " + nm, A: deriv(agrFaixa(p.A, p.hA, f, k)), B: deriv(agrFaixa(p.B, p.hB, f, k, p.corteB)), cls: "fx"}));
+  }
+  L.push({nome: "TOTAL", A: deriv(agr(p.A, p.hA, fasesVis())), B: deriv(agr(p.B, p.hB, fasesVis(), p.corteB)), cls: "tot"});
+  return L;
+}
 function renderTabela(p) {
-  const linhas = fasesVis().map(f => [D.fases[f], derivados(agr(p.A, p.horas, [f])), derivados(agr(p.B, p.horas, [f], p.corteB))]);
-  linhas.push(["Total", derivados(agr(p.A, p.horas, fasesVis())), derivados(agr(p.B, p.horas, fasesVis(), p.corteB))]);
-  const cab = "<tr><th>Fase</th>" + COLS.map(c => `<th>${c[0]}</th>`).join("") + "</tr>";
-  const tabela = (titulo, cel) => `${titulo ? `<div class="sub" style="margin:8px 0 4px">${titulo}</div>` : ""}<table>${cab}` +
-    linhas.map(([n, a, b]) => `<tr><td>${n === "Total" ? "<b>Total</b>" : n}</td>` + COLS.map(c => `<td>${cel(a, b, c)}</td>`).join("") + "</tr>").join("") + "</table>";
-  if (S.vis === "compacta") {
-    $("tabFase").innerHTML = tabela("", (a, b, [, k, f]) => { const d = delta(a[k], b[k]); return `${a[k] == null ? "–" : f(a[k])} <span class="d ${d.cls}">${d.txt.replace(/^[▲▼●] /, "")}</span>`; });
+  const L = linhasTabela(p), c = C();
+  const cab = "<thead><tr><th>Fase / Faixa</th>" + COLS.map(x => `<th>${x[0]}</th>`).join("") + "</tr></thead>";
+  const val = (r, k, tipo) => r[k] == null || r.nh === 0 ? "—" : FMT[tipo](r[k]);
+  const tab = cel => `<div class="tblwrap"><table class="t">${cab}<tbody>` + L.map(l =>
+    `<tr class="${l.cls}"><td>${l.cls === "tot" ? "<b>TOTAL</b>" : l.nome}</td>` + COLS.map(x => `<td>${cel(l, x)}</td>`).join("") + "</tr>").join("") + "</tbody></table></div>";
+  const rot = (dias, hs) => S.modo === "dia" ? `${dBRY(c.dias[dias[0]])} · ${hsDia(dias[0], hs).slice(-1)[0] ?? "—"}h${S.hm === "ate" && hs.length > 1 ? " (acum.)" : ""}` :
+    `${dias.length ? dBR(c.dias[dias[0]]) : "—"} a ${dias.length ? dBR(c.dias[dias[dias.length - 1]]) : "—"}`;
+  if (S.vis === "compacto") {
+    $("tabela").innerHTML = tab((l, [, k, tipo, inv]) => { const d = delta(l.A[k], l.B[k], inv);
+      return `<b>${val(l.A, k, tipo)}</b><span class="dlt ${d.cls}-t">${l.A.nh === 0 ? "—" : d.txt}</span>`; });
   } else {
-    $("tabFase").innerHTML = tabela("Atual", (a, b, [, k, f]) => a[k] == null ? "–" : f(a[k])) +
-      tabela("Comparação", (a, b, [, k, f]) => b[k] == null ? "–" : f(b[k])) +
-      tabela("Variação", (a, b, [, k]) => { const d = delta(a[k], b[k]); return `<span class="d ${d.cls}">${d.txt}</span>`; });
+    $("tabela").innerHTML = `<div class="sub-t">🟦 Período Atual — ${rot(p.A, p.hA)}</div>` + tab((l, [, k, t]) => val(l.A, k, t)) +
+      `<div class="sub-t">🟧 Período de Comparação — ${rot(p.B, p.hB)}</div>` + tab((l, [, k, t]) => val(l.B, k, t)) +
+      `<div class="sub-t">📈 Análise de Variação Percentual (%)</div>` + tab((l, [, k, , inv]) => { const d = delta(l.A[k], l.B[k], inv); return `<span class="${d.cls}-t">${d.txt}</span>`; });
   }
 }
-function grafico(id, cfg) {
-  if (graficos[id]) graficos[id].destroy();
-  Chart.defaults.color = css("--text-2"); Chart.defaults.borderColor = css("--border");
-  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
-  graficos[id] = new Chart($(id), cfg);
+function serieHora(d, hs, fs) { return C().horas.map(h => hs.includes(h) && !(d === HOJE() && h > S.agora) ? agrDia(d, [h], fs) : null); }
+function dsSobrepor(bA, bB, lA, lB) {
+  return [{type: "bar", label: "Acionamentos atual", data: bA, backgroundColor: "rgba(185,138,61,.50)", borderRadius: 4, yAxisID: "y"},
+    {type: "bar", label: "Acionamentos comp.", data: bB, backgroundColor: "rgba(255,159,67,.45)", borderRadius: 4, yAxisID: "y"},
+    {type: "line", label: "CPC atual", data: lA, borderColor: "#28c76f", backgroundColor: "#28c76f", borderWidth: 2.6, pointRadius: 2.5, tension: .3, yAxisID: "y1"},
+    {type: "line", label: "CPC comp.", data: lB, borderColor: "#9aa0a6", backgroundColor: "#9aa0a6", borderDash: [6, 4], borderWidth: 2.2, pointRadius: 2.5, tension: .3, yAxisID: "y1"}];
 }
-const baseOpts = (extra = {}) => ({responsive: true, maintainAspectRatio: false, animation: false,
-  interaction: {mode: "index", intersect: false}, plugins: {legend: {position: "bottom", labels: {boxWidth: 12}}}, ...extra});
-
+function escalasDuplas() {
+  return {y: {beginAtZero: true, title: {display: true, text: "Acionamentos"}},
+          y1: {beginAtZero: true, position: "right", grid: {drawOnChartArea: false}, title: {display: true, text: "CPC"}}};
+}
 function renderCurva(p) {
-  const m = $("metCurva").value, nome = $("metCurva").selectedOptions[0].text, fs = fasesVis();
-  const porHora = dias => D.horas.map(h => {
-    const v = dias.map(d => (d === HOJE && h > S.hora) ? null : agrDia(d, [h], fs)[m]);
-    return v.includes(null) ? null : v.reduce((s, x) => s + x, 0) / v.length;
-  });
-  grafico("gCurva", {data: {labels: D.horas.map(h => h + "h"), datasets: [
-    {type: "bar", label: nome + " (atual)", data: porHora(p.A), backgroundColor: css("--s1"), borderRadius: 4},
-    {type: "line", label: nome + " (comparação)", data: porHora(p.B), borderColor: css("--s2"), borderDash: [5, 4], borderWidth: 2, pointRadius: 3}]},
-    options: baseOpts({scales: {y: {title: {display: true, text: nome + " por hora"}}}})});
+  destruir("chCur"); const c = C(), fs = fasesVis(), z = $("curvaZona"), per = S.modo === "periodo";
+  $("segExib").classList.toggle("dim", per);
+  $("tituloCurva").textContent = per ? "📈 Tendência diária · Atual × Comparação" : "⏱ Curva intradiária · Atual × Comparação";
+  $("helpCurva").innerHTML = per ? "📖 Um ponto por dia do período: <b>barras</b> = acionamentos (atual dourado, comparação laranja); <b>linhas</b> = CPC (atual verde, comparação cinza tracejada), no eixo da direita. Os dias são pareados pela posição (1º dia de A com 1º de B)."
+    : "📖 <b>Barras</b> = acionamentos em cada hora; <b>linha verde</b> = CPC (contatos certos), no eixo da direita. Em <b>Sobrepor</b>, as barras laranja e a linha cinza tracejada são a comparação. Mostra em que hora a operação rendeu mais ou ficou para trás.";
+  if (per) {
+    const n = Math.max(p.A.length, p.B.length), lab = Array.from({length: n}, (_, i) => "D" + (i + 1));
+    const s = (dias, m, corte) => lab.map((_, i) => dias[i] == null ? null : agrDia(dias[i], c.horas, fs, corte && i === dias.length - 1)[m]);
+    z.innerHTML = '<div class="chart h330"><canvas id="chCurO"></canvas></div>';
+    return mk("chCurO", {data: {labels: lab, datasets: dsSobrepor(s(p.A, "fups"), s(p.B, "fups", p.corteB), s(p.A, "cpc"), s(p.B, "cpc", p.corteB))},
+      options: {interaction: {mode: "index", intersect: false}, plugins: {legend: leg, tooltip: {callbacks: {title: it => {
+        const i = it[0].dataIndex; return `${lab[i]} · A ${p.A[i] != null ? dBR(c.dias[p.A[i]]) : "—"} · B ${p.B[i] != null ? dBR(c.dias[p.B[i]]) : "—"}`; }}}},
+        scales: escalasDuplas()}});
+  }
+  const dA = p.A[0], dB = p.B[0], sA = serieHora(dA, p.hA, fs), sB = serieHora(dB, p.hB, fs);
+  const v = (s, m) => s.map(x => x ? x[m] : null), lab = c.horas.map(h => h + "h");
+  if (S.exib === "lado") {
+    z.innerHTML = `<div class="dual"><div><div class="mini-t a">🟦 Atual — ${dBRY(c.dias[dA])}</div><div class="chart"><canvas id="chCurA"></canvas></div></div>
+      <div><div class="mini-t c">🟧 Comparação — ${dBRY(c.dias[dB])}</div><div class="chart"><canvas id="chCurC"></canvas></div></div></div>`;
+    for (const [id, s] of [["chCurA", sA], ["chCurC", sB]]) mk(id, {data: {labels: lab, datasets: [
+      {type: "bar", label: "Acionamentos", data: v(s, "fups"), backgroundColor: "rgba(185,138,61,.55)", borderRadius: 4, yAxisID: "y"},
+      {type: "line", label: "CPC", data: v(s, "cpc"), borderColor: "#28c76f", backgroundColor: "#28c76f", tension: .3, borderWidth: 2.5, pointRadius: 2, yAxisID: "y1"}]},
+      options: {interaction: {mode: "index", intersect: false}, plugins: {legend: leg}, scales: escalasDuplas()}});
+  } else {
+    z.innerHTML = '<div class="chart h330"><canvas id="chCurO"></canvas></div>';
+    const passo = Math.max(30, 900 / c.horas.length);
+    mk("chCurO", {data: {labels: lab, datasets: dsSobrepor(v(sA, "fups"), v(sB, "fups"), v(sA, "cpc"), v(sB, "cpc"))},
+      options: {interaction: {mode: "index", intersect: false}, plugins: {legend: leg}, scales: escalasDuplas(),
+        animation: RM ? false : {duration: 850, easing: "easeOutQuart",
+          delay: ctx => ctx.type === "data" && ctx.mode === "default" ? ctx.dataIndex * passo + ctx.datasetIndex * 60 : 0}}});
+  }
 }
-function renderConv(p) {
-  const fs = fasesVis();
-  grafico("gConv", {type: "bar", data: {labels: fs.map(f => D.fases[f]), datasets: [
-    {label: "Atual", data: fs.map(f => derivados(agr(p.A, p.horas, [f])).pct_cpc * 100), backgroundColor: css("--s1"), borderRadius: 4},
-    {label: "Comparação", data: fs.map(f => derivados(agr(p.B, p.horas, [f], p.corteB)).pct_cpc * 100), backgroundColor: css("--text-2") + "88", borderRadius: 4}]},
-    options: baseOpts({scales: {y: {title: {display: true, text: "% CPC"}}},
-      plugins: {legend: {position: "bottom"}, tooltip: {callbacks: {label: c => `${c.dataset.label}: ${c.raw.toFixed(1).replace(".", ",")}%`}}}})});
-}
-function renderFunil(A, B) {
-  const et = ["fups", "cpc", "cpca", "boleto"], nomes = ["FUPS", "CPC", "CPCA", "Boleto"];
-  const por100 = r => et.map(k => r.fups ? r[k] / r.fups * 100 : 0);
-  grafico("gFunil", {type: "bar", data: {labels: nomes, datasets: [
-    {label: "Atual (por 100 acionamentos)", data: por100(A), backgroundColor: css("--s1"), borderRadius: 4},
-    {label: "Comparação", data: por100(B), backgroundColor: css("--text-2") + "88", borderRadius: 4}]},
-    options: baseOpts({indexAxis: "y", scales: {x: {type: "logarithmic", title: {display: true, text: "por 100 acionamentos (escala log)"}}},
-      plugins: {legend: {position: "bottom"}, tooltip: {callbacks: {label: c => `${c.dataset.label}: ${c.raw.toFixed(2).replace(".", ",")}`}}}})});
+function renderConvFunil(p) {
+  const c = C(), fs = fasesVis().filter(f => agr(p.A, p.hA, [f]).cpca || agr(p.B, p.hB, [f], p.corteB).cpca);
+  mk("chConv", {type: "bar", data: {labels: fs.map(f => c.fases[f]), datasets: [
+    {label: "Atual", data: fs.map(f => (deriv(agr(p.A, p.hA, [f])).conv || 0) * 100), backgroundColor: "rgba(212,167,44,.7)", borderRadius: 5},
+    {label: "Comparação", data: fs.map(f => (deriv(agr(p.B, p.hB, [f], p.corteB)).conv || 0) * 100), backgroundColor: "rgba(255,159,67,.7)", borderRadius: 5}]},
+    options: {plugins: {legend: leg, tooltip: {callbacks: {label: x => `${x.dataset.label}: ${f1.format(x.raw)}%`}}},
+      scales: {y: {beginAtZero: true, ticks: {callback: v => v + "%"}, title: {display: true, text: "% Conversão (boletos ÷ acordos)"}}}}});
+  const A = agr(p.A, p.hA, fasesVis()), B = agr(p.B, p.hB, fasesVis(), p.corteB), et = ["fups", "cpc", "cpca", "boleto"];
+  mk("chFunil", {type: "bar", data: {labels: ["Acionamentos", "CPC", "Acordos", "Boletos"], datasets: [
+    {label: "Atual", data: et.map(k => A[k]), backgroundColor: "rgba(185,138,61,.7)", borderRadius: 5},
+    {label: "Comparação", data: et.map(k => B[k]), backgroundColor: "rgba(255,159,67,.7)", borderRadius: 5}]},
+    options: {plugins: {legend: leg}, scales: {y: {beginAtZero: true, title: {display: true, text: "Volume"}}}}});
 }
 function renderHH() {
   const p = periodos(), fs = fasesVis();
-  const A = derivados(agr(p.A, p.horas, fs)), B = derivados(agr(p.B, p.horas, fs, p.corteB));
-  renderKpis(A, B); renderTabela(p); renderCurva(p); renderConv(p); renderFunil(A, B);
+  const A = deriv(agr(p.A, p.hA, fs)), B = deriv(agr(p.B, p.hB, fs, p.corteB));
+  renderKpis(A, B); renderTabela(p); renderCurva(p); renderConvFunil(p);
+  $("aproxwarn").classList.toggle("oculto", !(S.modo === "dia" && S.hm === "esp" && S.horasEsp.size > 1));
+  $("notaCorte").textContent = p.corteB ? `O período A termina hoje (até ${S.agora}h), então o último dia de B também é cortado às ${S.agora}h, para a conta ser justa.` : "";
 }
 
-// ---------------- previsões ----------------
-function perfilMedio(escopo) {   // forma média do CPC único acumulado nos 20 dias anteriores (0..1)
-  const ini = Math.max(0, HOJE - 20), soma = D.horas.map(() => 0);
-  for (let d = ini; d < HOJE; d++) D.horas.forEach((h, i) => {
-    soma[i] += escopo === "__TOTAL__" ? D.cpcu_acum[d].reduce((s, f) => s + f[i], 0) : D.cpcu_acum[d][D.fases.indexOf(escopo)][i];
-  });
-  return soma.map(v => v / soma[soma.length - 1]);
-}
-function acumHoje(escopo) {
-  return D.horas.map((h, i) => escopo === "__TOTAL__" ? D.cpcu_acum[HOJE].reduce((s, f) => s + f[i], 0) : D.cpcu_acum[HOJE][D.fases.indexOf(escopo)][i]);
-}
-function renderPrev() {
-  const pr = D.previsao_hoje[String(S.hora)], esc = S.fasePrev;
-  $("botoesFase").innerHTML = ["__TOTAL__", ...D.fases].map(f => {
-    const e = f === "__TOTAL__" ? (D.placar_dia.find(x => x.hora === 12) || {}).wmape : D.placar_fases[f];
-    return `<button class="${f === esc ? "on" : ""}" data-fp="${f}">${f === "__TOTAL__" ? "Total" : f} <span class="sub">±${pct(e, 0)} às 12h</span></button>`;
+/* ======================= PREVISÕES & MÊS ======================= */
+const NOMES_IND = {cpc_unico: "CPC único", fups: "Acionamentos", cpc: "CPC (contato certo)", cpca: "Acordos (CPCA)", boleto: "Boletos",
+  propostas: "Propostas", risco: "Risco gerado", pagos: "Boletos pagos", valor_pago: "Valor pago"};
+const DEF_IND = {cpc_unico: "Contratos distintos com contato certo, somando os dias do mês.", fups: "Total de acionamentos (tentativas de contato).",
+  cpc: "Contatos com a pessoa certa.", cpca: "Contatos que viraram acordo.", boleto: "Boletos gerados.", propostas: "Propostas aguardando resposta.",
+  risco: "Valor dos contratos com boleto gerado.", pagos: "Boletos efetivamente pagos.", valor_pago: "Valor efetivamente pago."};
+const ehR = ind => ["risco", "valor_pago"].includes(ind);
+const fmtInd = (ind, v) => v == null ? "—" : ehR(ind) ? brlC(v) : fI.format(Math.round(v));
+
+function renderMesHero() {
+  const c = C(), r = c.relogio, pr = r.du_passados / r.du_total;
+  const cards = [...Object.keys(c.mes), ...Object.keys(c.mes_sem_prev)].map(ind => {
+    const on = ind === S.ind ? " on" : "";
+    if (c.mes[ind]) {
+      const m = c.mes[ind], prog = m.realizado_ate / m.prev;
+      return `<button class="mcard${on}" data-ind="${ind}" title="${DEF_IND[ind]}"><div class="mcl">${NOMES_IND[ind]}</div>
+        <div class="mcv">${fmtInd(ind, m.prev)}</div><div class="mcs">previsão de fechamento<br>faixa ${fmtInd(ind, m.lo)} – ${fmtInd(ind, m.hi)}</div>
+        <div class="bar5"><i style="width:${Math.min(100, prog * 100)}%"></i></div>
+        <div class="mcs">realizado ${fmtInd(ind, m.realizado_ate)} (${pctAbs(prog, 0)})<br>vs mês anterior: <b class="${cor3(m.vs_ant)}">${pct(m.vs_ant, 0)}</b> no fechamento<br>erro típico neste ponto do mês: ±${pctAbs(m.erro_tipico, 1)}</div></button>`;
+    }
+    const s = c.mes_sem_prev[ind], v = s.mesmo_ponto_ant ? s.realizado / s.mesmo_ponto_ant - 1 : null;
+    return `<button class="mcard${on}" data-ind="${ind}" title="${DEF_IND[ind]}"><div class="mcl">${NOMES_IND[ind]}</div>
+      <div class="mcv" style="color:var(--acs)">${fmtInd(ind, s.realizado)}</div><div class="mcs">realizado no mês<br>sem previsão — chegam em lote</div>
+      <div class="mcs" style="margin-top:6px">vs mesmo ponto do mês anterior: <b class="${cor3(v)}">${pct(v, 0)}</b></div></button>`;
   }).join("");
-  document.querySelectorAll("[data-fp]").forEach(b => b.onclick = () => { S.fasePrev = b.dataset.fp; renderPrev(); });
-  if (!pr) { $("cockpit").innerHTML = "<div class='aviso'>Histórico insuficiente para prever.</div>"; return; }
-  const v = esc === "__TOTAL__" ? pr.total : pr.fases[esc];
-  const real = esc === "__TOTAL__" ? D.fechamento_real_hoje.total : D.fechamento_real_hoje.fases[esc];
-  const dv = delta(v.prev, v.esperado);
-  $("cockpit").innerHTML = [
-    ["Realizado até " + S.hora + "h", fmt.format(v.realizado), ""],
-    ["Previsão de fechamento", fmt.format(v.prev), `faixa ${fmt.format(v.lo)} – ${fmt.format(v.hi)}`],
-    ["Esperado do dia", fmt.format(v.esperado), "média dos últimos 20 dias úteis"],
-    ["Previsão vs esperado", `<span class="d ${dv.cls}" style="font-size:18px">${dv.txt}</span>`, ""],
-    ...(S.revelar ? [["Fechamento real", fmt.format(real), (real >= v.lo && real <= v.hi ? "✔ dentro da faixa" : "✖ fora da faixa") + ` · erro ${pct(v.prev / real - 1)}`]] : [])
-  ].map(([n, val, c]) => `<div class="kpi"><div class="n">${n}</div><div class="v">${val}</div><div class="c">${c}</div></div>`).join("");
-  $("frase").textContent = "🔎 " + D.ofensor[String(S.hora)] + " (comparado com a média dos 20 dias anteriores na mesma hora)";
-  const a = D.alerta;
-  $("alerta").className = "aviso " + (a.ativo ? "alerta" : "ok");
-  $("alerta").innerHTML = (a.ativo ? "⚠ <b>Alerta de deriva:</b> " : "✔ <b>Sem deriva:</b> ") +
-    `erro médio da previsão das 12h nos últimos 5 dias = ${pct(a.erro_12h_5d)} (limite ${pct(a.limite, 0)}).`;
-  $("revelado").textContent = S.revelar ? "" : "o dia simulado já aconteceu: dá para conferir";
-  const perf = perfilMedio(esc), ac = acumHoje(esc), iH = S.hora - 8;
-  const proj = k => D.horas.map((h, i) => i < iH ? null : ac[iH] + (k - ac[iH]) * (perf[i] - perf[iH]) / ((1 - perf[iH]) || 1));
-  grafico("gDia", {type: "line", data: {labels: D.horas.map(h => h + "h"), datasets: [
-    {label: "Realizado", data: ac.map((x, i) => i <= iH ? x : null), borderColor: css("--s1"), borderWidth: 2.5, pointRadius: 3},
-    {label: "Faixa", data: proj(v.hi), borderColor: "transparent", backgroundColor: css("--s2") + "26", fill: "+1", pointRadius: 0},
-    {label: "Faixa (baixa)", data: proj(v.lo), borderColor: "transparent", pointRadius: 0},
-    {label: "Previsão", data: proj(v.prev), borderColor: css("--s2"), borderDash: [6, 4], borderWidth: 2, pointRadius: 0},
-    {label: "Esperado", data: perf.map(x => x * v.esperado), borderColor: css("--muted"), borderDash: [2, 3], borderWidth: 1.5, pointRadius: 0},
-    ...(S.revelar ? [{label: "Real (revelado)", data: ac.map((x, i) => i >= iH ? x : null), borderColor: css("--s3"), borderWidth: 2, pointRadius: 2}] : [])]},
-    options: baseOpts({plugins: {legend: {position: "bottom", labels: {boxWidth: 12, filter: i => !i.text.startsWith("Faixa (baixa)")}}},
-      scales: {y: {title: {display: true, text: "CPC único acumulado"}}}})});
+  $("cardMes").innerHTML = `<div class="ctitle">📅 Fechamento do mês · ${r.mes}<span class="sp"></span><span class="muted">dados fechados até ${dBR(DADOS.hoje)} · recalcula 1x por dia</span></div>
+    <div class="relogio"><b>Dia útil ${r.du_passados} de ${r.du_total}</b> · dia ${r.dia} de ${r.dias_mes}</div>
+    <div class="bar8"><i style="width:${pr * 100}%"></i></div>
+    <div class="muted" style="margin-top:6px">${pctAbs(pr, 0)} dos dias úteis já passaram · clique num indicador para ver como a previsão foi construída</div>
+    <div class="mcards">${cards}</div>`;
+  QS("#cardMes .mcard").forEach(b => b.onclick = () => { S.ind = b.dataset.ind; renderPM(true); });
 }
-const NOMES_IND = {fups: "FUPS", cpc: "CPC", cpc_unico: "CPC único", cpca: "CPCA (acordos)", boleto: "Boletos"};
-function renderMes() {
-  const m = D.mes[S.ind];
-  $("cardsMes").innerHTML = [["Realizado no mês", fmt.format(m.realizado_ate)], ["Previsão de fechamento", fmt.format(m.prev)],
-    ["Faixa (alvo 90%)", fmt.format(m.lo) + " – " + fmt.format(m.hi)]]
-    .map(([n, v]) => `<div class="kpi"><div class="n">${n}</div><div class="v">${v}</div></div>`).join("");
-  const lab = m.curva.map(c => dataBR(c.dia)), ult = m.curva.findIndex(c => c.realizado_acum == null) - 1;
-  const ponte = k => m.curva.map((c, i) => i === ult ? c.realizado_acum : c[k]);
-  grafico("gMes", {type: "line", data: {labels: lab, datasets: [
-    {label: "Realizado", data: m.curva.map(c => c.realizado_acum), borderColor: css("--s1"), borderWidth: 2.5, pointRadius: 2},
-    {label: "Faixa", data: ponte("hi"), borderColor: "transparent", backgroundColor: css("--s2") + "26", fill: "+1", pointRadius: 0},
-    {label: "Faixa (baixa)", data: ponte("lo"), borderColor: "transparent", pointRadius: 0},
-    {label: "Previsão", data: ponte("prev_acum"), borderColor: css("--s2"), borderDash: [6, 4], borderWidth: 2, pointRadius: 0},
-    {label: "Mês anterior", data: m.mes_anterior.slice(0, lab.length), borderColor: css("--muted"), borderWidth: 1.5, pointRadius: 0},
-    {label: "Mês retrasado", data: m.mes_retrasado.slice(0, lab.length), borderColor: css("--muted"), borderDash: [2, 3], borderWidth: 1.5, pointRadius: 0}]},
-    options: baseOpts({plugins: {legend: {position: "bottom", labels: {boxWidth: 12, filter: i => !i.text.startsWith("Faixa (baixa)")}}},
-      scales: {y: {title: {display: true, text: NOMES_IND[S.ind] + " acumulado"}}}})});
+
+/* ---------- story ---------- */
+function etapasStory() {
+  const c = C(), ind = S.ind;
+  if (!c.mes[ind]) {
+    const s = c.mes_sem_prev[ind], mx = 1.08 * Math.max(s.realizado, s.mesmo_ponto_ant || 0) || 1;
+    return {mx, ind, et: [
+      {t: "Onde estamos", txt: `Até ${dBR(DADOS.hoje)}: <span class="sn">${fmtInd(ind, s.realizado)}</span> de ${NOMES_IND[ind].toLowerCase()} no mês.`,
+       row: {lab: "Realizado no mês", segs: [{a: 0, b: s.realizado, cor: "var(--ac)", txt: fmtInd(ind, s.realizado)}]}},
+      {t: "Por que não há previsão", txt: `Pagamentos chegam <b>em lote</b> e dependem de boletos emitidos dias antes; prever pelo ritmo do mês erraria muito. Por isso o painel mostra o realizado e a comparação com o <b>mesmo ponto do mês anterior</b>: <span class="sn">${fmtInd(ind, s.mesmo_ponto_ant)}</span>.`,
+       row: {lab: "Mesmo ponto, mês ant.", segs: [{a: 0, b: s.mesmo_ponto_ant, cor: "rgba(190,196,204,.55)", txt: fmtInd(ind, s.mesmo_ponto_ant)}]}}]};
+  }
+  const m = c.mes[ind], R = m.realizado_ate, mx = 1.08 * Math.max(m.por_dow, m.linear, m.blend, m.prev, m.hi, m.total_mes_anterior) || 1;
+  const falta = m.falta_dow.reduce((s, g) => s + g.n * g.media, 0);
+  let x = R; const segsDow = [{a: 0, b: R, cor: "rgba(var(--ac-rgb),.22)"}];
+  m.falta_dow.forEach((g, i) => { const v = g.n * g.media;
+    segsDow.push({a: x, b: x + v, cor: i % 2 ? "rgba(91,229,154,.36)" : "rgba(91,229,154,.6)", txt: `${g.n}× ${DSEM[g.dow]}`, tip: `${g.n} ${DSEM_L[g.dow]}${g.n > 1 ? "s" : ""} × ${fmtInd(ind, g.media)}`}); x += v; });
+  const ajSobe = m.prev >= m.blend, vsAnt = m.total_mes_anterior ? m.prev / m.total_mes_anterior - 1 : null;
+  return {mx, ind, et: [
+    {t: "Onde estamos", txt: `Até ${dBR(DADOS.hoje)} foram <span class="sn">${fmtInd(ind, R)}</span> — dia útil ${m.du_passados} de ${m.du_total}.`,
+     row: {lab: "Realizado até hoje", segs: [{a: 0, b: R, cor: "var(--ac)", txt: fmtInd(ind, R)}]}},
+    {t: "O que ainda falta, dia a dia", txt: m.falta_dow.map(g => `<span class="sg">${g.n} ${DSEM_L[g.dow]}${g.n > 1 ? "s" : ""} × ${fmtInd(ind, g.media)}</span>`).join("") +
+       `<br>Cada dia da semana tem seu ritmo (média recente, com mais peso nas últimas semanas). Realizado ${fmtInd(ind, R)} + falta ${fmtInd(ind, falta)} = <span class="sn">${fmtInd(ind, m.por_dow)}</span>.`,
+     row: {lab: "Ritmo por dia da semana", segs: segsDow, mk: {v: m.por_dow, txt: fmtInd(ind, m.por_dow)}}},
+    {t: "Segunda opinião: o relógio", txt: `No ritmo médio de ${fmtInd(ind, R / Math.max(m.du_passados, 1))} por dia útil, os ${m.du_total} dias úteis do mês dariam <span class="sn">${fmtInd(ind, m.linear)}</span>.`,
+     row: {lab: "Relógio (ritmo linear)", segs: [{a: 0, b: m.linear, cor: "#8fa3bf", txt: fmtInd(ind, m.linear)}]}},
+    {t: "A previsão", txt: `Média dos dois = ${fmtInd(ind, m.blend)}. Neste ponto do mês o método costuma errar ${m.ajuste < 1 ? "para cima" : "para baixo"}, então aplica o ajuste histórico (${pct(m.ajuste - 1)}): <span class="sn">${fmtInd(ind, m.prev)}</span>.`,
+     row: {lab: "Previsão (média + ajuste)", segs: ajSobe ? [{a: 0, b: m.blend, cor: "#5be59a"}, {a: m.blend, b: m.prev, cls: "listra-v"}]
+       : [{a: 0, b: m.prev, cor: "#5be59a", txt: fmtInd(ind, m.prev)}, {a: m.prev, b: m.blend, cls: "listra-r"}], mk: {v: m.prev, txt: ""}}},
+    {t: "Faixa provável", txt: `Nos 12 meses anteriores, neste mesmo ponto do mês, o fechamento caiu entre ${fmtInd(ind, m.lo)} e ${fmtInd(ind, m.hi)} em 9 de cada 10 vezes.`,
+     row: {lab: "Faixa provável (90%)", segs: [{a: m.lo, b: m.hi, cor: "rgba(91,229,154,.2)", borda: true}], mk: {v: m.prev, txt: ""}}},
+    {t: "Comparação", txt: `O mês anterior fechou em ${fmtInd(ind, m.total_mes_anterior)}; a previsão indica <b class="${cor3(vsAnt)}">${pct(vsAnt, 1)}</b> no fechamento.`,
+     row: {lab: "Mês anterior (total)", segs: [{a: 0, b: m.total_mes_anterior, cor: "rgba(190,196,204,.55)", txt: fmtInd(ind, m.total_mes_anterior)}]}}]};
+}
+function renderStory() {
+  const sd = etapasStory(), et = sd.et, mx = sd.mx; S.st.n = et.length; S.st.dados = sd;
+  const W = v => Math.max(0, v / mx * 100);
+  const rows = et.map((e, i) => {
+    const segs = e.row.segs.map((s, j) => {
+      const w = W(s.b) - W(s.a), dentro = s.txt && w > 9;
+      return `<div class="seg2 ${s.cls || ""}" data-w="${w}" data-j="${j}" title="${s.tip || s.txt || ""}" style="left:${W(s.a)}%;${s.cor ? "background:" + s.cor + ";" : ""}${s.borda ? "border:1px dashed #5be59a;" : ""}">${dentro ? `<span>${s.txt}</span>` : ""}</div>`;
+    }).join("");
+    const s0 = e.row.segs[0], unica = e.row.segs.length === 1 && s0.txt && (W(s0.b) - W(s0.a)) <= 9;
+    const out = unica ? `<span class="st-out" style="left:calc(${W(s0.b)}% + 6px)">${s0.txt}</span>` : "";
+    const mkr = e.row.mk ? `<div class="st-mk" style="left:${W(e.row.mk.v)}%"><span>${e.row.mk.txt}</span></div>` : "";
+    return `<div class="st-row hid" data-i="${i}"><div class="st-lab">${e.row.lab}</div><div class="st-track">${segs}${mkr}${out}</div></div>`;
+  }).join("");
+  const ticks = [0, .25, .5, .75, 1].map(f => `<span style="left:${f * 100}%">${fmtInd(sd.ind, mx / 1.08 * f)}</span>`).join("");
+  $("cardStory").innerHTML = `<div class="ctitle">🎬 Como chegamos neste número · ${NOMES_IND[sd.ind]}<span class="sp"></span>
+      <button class="st-b" id="stPrev" aria-label="Etapa anterior">◀</button><button class="st-b" id="stPlay">▶ reproduzir</button><button class="st-b" id="stNext" aria-label="Próxima etapa">▶▶</button></div>
+    <div class="st-dots">${et.map((e, i) => `<button class="st-dot" data-e="${i}" title="${e.t}">${i + 1}</button>`).join("")}</div>
+    <div class="st-box"><div class="st-tit" id="stTit"></div><div class="st-txt" id="stTxt"></div></div>
+    ${rows}<div class="st-row"><div></div><div class="st-axis">${ticks}</div></div>`;
+  $("stPrev").onclick = () => { pararStory(); irEtapa(Math.max(0, S.st.etapa - 1)); };
+  $("stNext").onclick = () => { pararStory(); irEtapa(Math.min(S.st.n - 1, S.st.etapa + 1)); };
+  $("stPlay").onclick = () => S.st.timer ? pararStory() : tocarStory(S.st.etapa >= S.st.n - 1);
+  QS(".st-dot").forEach(b => b.onclick = () => { pararStory(); irEtapa(+b.dataset.e); });
+}
+function irEtapa(i) {
+  if (!S.st.dados) return;
+  S.st.etapa = i; const e = S.st.dados.et[i];
+  QS(".st-dot").forEach((b, k) => b.classList.toggle("on", k === i));
+  QS(".st-row[data-i]").forEach(row => {
+    const k = +row.dataset.i, vis = k <= i;
+    row.classList.toggle("hid", !vis);
+    QS(".seg2", row).forEach(s => { s.style.transitionDelay = vis && !RM ? (+s.dataset.j * 260) + "ms" : "0ms"; s.style.width = vis ? s.dataset.w + "%" : "0%"; });
+  });
+  const tit = $("stTit"), txt = $("stTxt");
+  if (!tit) return;
+  const troca = () => { tit.textContent = `${i + 1} · ${e.t}`; txt.innerHTML = e.txt; txt.style.opacity = 1; };
+  if (RM) troca(); else { txt.style.opacity = 0; setTimeout(troca, 160); }
+}
+function tocarStory(doInicio) {
+  pararStory(); if (doInicio) irEtapa(0);
+  const b = $("stPlay"); if (b) b.textContent = "⏸ pausar";
+  S.st.timer = setInterval(() => { if (S.st.etapa >= S.st.n - 1) return pararStory(); irEtapa(S.st.etapa + 1); }, 4200);
+}
+function pararStory() { if (S.st.timer) clearInterval(S.st.timer); S.st.timer = null; const b = $("stPlay"); if (b) b.textContent = "▶ reproduzir"; }
+
+/* ---------- curva do mês ---------- */
+function renderCurvaMes() {
+  const c = C(), ind = S.ind, m = c.mes[ind];
+  destruir("chMes");
+  if (!m) {
+    $("cardCurvaMes").innerHTML = `<div class="ctitle">📈 ${NOMES_IND[ind]} · acumulado no mês</div><div class="muted">Sem previsão para este indicador — os pagamentos chegam em lote. Escolha um indicador com previsão nos cartões acima.</div>`;
+    return;
+  }
+  $("cardCurvaMes").innerHTML = `<div class="ctitle">📈 ${NOMES_IND[ind]} · acumulado no mês<span class="sp"></span><span class="muted">${DEF_IND[ind]}</span></div>
+    <div class="chart-help">📖 <b>Dourado</b> = realizado no mês; <b>verde tracejado</b> = previsão até o fechamento, com a <b>faixa provável</b> em verde claro; <b>cinzas</b> = mês anterior e o anterior a ele, nos mesmos dias úteis. À direita, cada dia: <b>barras douradas</b> = realizado, <b>verdes</b> = previsto para os dias que faltam, e o <b>traço verde</b> sobre cada barra passada = o que se previa na véspera.</div>
+    <div class="mesgrid"><div class="chart h320"><canvas id="chMesAc"></canvas></div><div class="chart h320"><canvas id="chMesDia"></canvas></div></div>`;
+  const lab = m.curva.map(x => dBR(x.dia)), ult = m.curva.findIndex(x => x.realizado_acum == null) - 1;
+  const ponte = k => m.curva.map((x, i) => i === ult ? x.realizado_acum : x[k]);
+  const tt = {mode: "index", intersect: false};
+  mk("chMesAc", {type: "line", data: {labels: lab, datasets: [
+    {label: "_lo", data: ponte("lo"), borderColor: "transparent", pointRadius: 0},
+    {label: "Faixa provável", data: ponte("hi"), borderColor: "transparent", backgroundColor: "rgba(91,229,154,.14)", fill: "-1", pointRadius: 0},
+    {label: `Mês atual (${c.relogio.mes})`, data: m.curva.map(x => x.realizado_acum), borderColor: "#D4A72C", backgroundColor: "#D4A72C", borderWidth: 3, pointRadius: 2.5, tension: .2},
+    {label: "Previsão até o fechamento", data: ponte("prev_acum"), borderColor: "#5be59a", borderDash: [7, 4], borderWidth: 2.5, pointRadius: 0},
+    {label: "Mês anterior", data: m.mes_anterior.slice(0, lab.length), borderColor: "rgba(190,196,204,.75)", borderDash: [3, 3], borderWidth: 2, pointRadius: 0},
+    {label: "2 meses antes", data: m.mes_retrasado.slice(0, lab.length), borderColor: "rgba(150,156,164,.45)", borderDash: [1, 3], borderWidth: 1.5, pointRadius: 0}]},
+    options: {interaction: tt, plugins: {legend: leg, tooltip: {filter: i => !i.dataset.label.startsWith("_"), callbacks: {label: i => `${i.dataset.label}: ${fmtInd(ind, i.raw)}`}}},
+      scales: {x: {title: {display: true, text: "dia útil do mês"}}, y: {beginAtZero: true, ticks: {callback: v => fmtInd(ind, v)}}}}});
+  const pd = m.por_dia;
+  mk("chMesDia", {type: "bar", data: {labels: pd.map(x => dBR(x.dia)), datasets: [
+    {label: "Realizado por dia", data: pd.map(x => x.realizado), backgroundColor: "rgba(212,167,44,.75)", borderRadius: 4, barPercentage: .85, categoryPercentage: .9},
+    {label: "Previsto por dia", data: pd.map(x => x.previsto), backgroundColor: "rgba(91,229,154,.35)", borderColor: "rgba(91,229,154,.8)", borderWidth: 1, borderRadius: 4, barPercentage: .85, categoryPercentage: .9},
+    {type: "line", label: "Previsto na véspera", data: pd.map(x => x.vespera), showLine: false, pointStyle: "line", pointRadius: 8, pointHoverRadius: 10, pointBorderWidth: 3, borderColor: "#5be59a", backgroundColor: "#5be59a", order: -1},
+    {type: "line", label: "Mês anterior", data: m.mes_anterior_dia.slice(0, pd.length), borderColor: "rgba(190,196,204,.7)", borderDash: [3, 3], borderWidth: 1.5, pointRadius: 0}]},
+    options: {interaction: tt, plugins: {legend: leg, tooltip: {callbacks: {label: i => {
+      let s = `${i.dataset.label}: ${fmtInd(ind, i.raw)}`;
+      if (i.dataset.label === "Previsto na véspera" && pd[i.dataIndex].realizado != null && i.raw) s += ` → realizado ${pct(pd[i.dataIndex].realizado / i.raw - 1)}`;
+      return s; }}}},
+      scales: {x: {stacked: true}, y: {beginAtZero: true, ticks: {callback: v => fmtInd(ind, v)}}}}});
+}
+
+/* ---------- previsão do dia ---------- */
+function perfil(fi) {   // forma média do CPC único acumulado nos 20 dias anteriores (0..1)
+  const c = C(), h0 = HOJE(), soma = c.horas.map(() => 0);
+  for (let d = Math.max(0, h0 - 20); d < h0; d++) c.horas.forEach((_, i) => {
+    soma[i] += fi == null ? c.cpcu_acum[d].reduce((s, f) => s + f[i], 0) : c.cpcu_acum[d][fi][i]; });
+  return soma.map(v => v / (soma[soma.length - 1] || 1));
+}
+function acumDia(d, fi) { const c = C(); return c.horas.map((_, i) => fi == null ? c.cpcu_acum[d].reduce((s, f) => s + f[i], 0) : c.cpcu_acum[d][fi][i]); }
+function projetar(ac, perf, iH, alvo) { return ac.map((_, i) => i < iH ? null : ac[iH] + (alvo - ac[iH]) * (perf[i] - perf[iH]) / ((1 - perf[iH]) || 1)); }
+function renderDia() {
+  const c = C(), H = S.agora, iH = H - 8, esc = S.escopo, fi = esc === "__TOTAL__" ? null : c.fases.indexOf(esc);
+  const pick = p => !p ? null : esc === "__TOTAL__" ? p.total : p.fases[esc];
+  const v = pick(c.previsao_hoje[String(H)]), vf = pick(c.previsao_hoje["9"]), comp = c.comp_dia, al = c.alerta;
+  const pl = Object.fromEntries(c.placar_dia.map(x => [x.hora, x.wmape]));
+  destruir("chFcst"); destruir("chPred");
+  if (!v) { $("cardDia").innerHTML = `<div class="ctitle">🎯 Previsão de fechamento do dia</div><div class="muted">Histórico insuficiente para prever.</div>`; return; }
+  const selo = `● Erro médio da previsão nos últimos ${c.confiab.dias} dias úteis: ${pctAbs(pl[10])} às 10h · ${pctAbs(pl[12])} às 12h · ${pctAbs(pl[14])} às 14h`;
+  const botoesEsc = ["__TOTAL__", ...c.fases].map(f => `<button class="${f === esc ? "on" : ""}" data-esc="${f}">${f === "__TOTAL__" ? "Total" : f} <span>±${pctAbs(f === "__TOTAL__" ? pl[12] : c.placar_fases[f], 0)}</span></button>`).join("");
+  const ac = acumDia(HOJE(), fi), perf = perfil(fi), real = esc === "__TOTAL__" ? c.fechamento_real_hoje.total : c.fechamento_real_hoje.fases[esc];
+  const acComp = comp != null ? acumDia(comp, fi) : null, ritmo = acComp && acComp[iH] ? ac[iH] / acComp[iH] - 1 : null;
+  const fixa = S.modoPrev === "fixa" && vf && H > 9;
+  const projF = vf ? projetar(ac, perf, 1, vf.prev) : null;   // a previsão das 9h, projetada pela forma média do dia
+  const desvio = fixa && projF[iH] ? ac[iH] / projF[iH] - 1 : null;
+  const vsEsp = v.prev / v.esperado - 1;
+  const tiles = [["Realizado até " + H + "h", fI.format(v.realizado), "CPC único acumulado no dia"]];
+  if (fixa) tiles.push(["Previsão das 9h (fixa)", `<span class="up-t">${fI.format(vf.prev)}</span>`, `faixa provável ${fI.format(vf.lo)} – ${fI.format(vf.hi)}`],
+                       ["Desvio até " + H + "h", `<span class="${cor3(desvio)}">${pct(desvio)}</span>`, "realizado vs o que a previsão fixa projetava"]);
+  else tiles.push(["Previsão de fechamento", `<span class="up-t">${fI.format(v.prev)}</span>`, `faixa provável ${fI.format(v.lo)} – ${fI.format(v.hi)}`]);
+  tiles.push(["Esperado do dia", fI.format(v.esperado), "média dos últimos 20 dias úteis"],
+             ["Previsão vs esperado", `<span class="${cor3(vsEsp)}">${pct(vsEsp)}</span>`, vsEsp >= 0 ? "▲ acima do esperado" : "▼ abaixo do esperado"],
+             ["Ritmo vs comparação", `<span class="${cor3(ritmo)}">${pct(ritmo)}</span>`, comp != null ? `até ${H}h vs ${dBR(c.dias[comp])}` : "sem comparação"]);
+  const nm = esc === "__TOTAL__" ? "a carteira" : `a fase ${esc}`, fr = [];
+  if (fixa) { const lo9 = projetar(ac, perf, 1, vf.lo)[iH], hi9 = projetar(ac, perf, 1, vf.hi)[iH];
+    fr.push(`A previsão fixa das 9h dizia <b>${fI.format(vf.prev)}</b>; até ${H}h o realizado está <b class="${cor3(desvio)}">${pct(desvio)}</b> vs o que ela projetava, ${ac[iH] >= lo9 && ac[iH] <= hi9 ? "dentro" : "fora"} da faixa.`); }
+  fr.push(`No ritmo atual, ${nm} fecha em <b>${fI.format(v.prev)}</b> (faixa provável ${fI.format(v.lo)}–${fI.format(v.hi)}) — <b class="${cor3(vsEsp)}">${pct(vsEsp)}</b> vs o esperado para o dia (${fI.format(v.esperado)}).`);
+  if (ritmo != null) fr.push(`Até ${H}h está <b class="${cor3(ritmo)}">${pct(ritmo)}</b> vs ${dBR(c.dias[comp])} no mesmo horário.`);
+  const dec = c.decomp[String(H)] || {}, comps = [];
+  for (const f in dec) if (esc === "__TOTAL__" || f === esc) for (const k of ["estoque", "esforco", "taxa"]) comps.push([dec[f][k], k, f]);
+  comps.sort((a, b) => a[0] - b[0]);
+  const NC = {estoque: "estoque", esforco: "esforço (acionamentos por contrato)", taxa: "taxa de contato"};
+  if (comps.length && comps[0][0] < 0) fr.push(`Principal ofensor vs ${dBR(c.dias[comp])}: <b>${NC[comps[0][1]]}</b> em <b>${comps[0][2]}</b> (${MENOS}${fI.format(Math.abs(comps[0][0]))}).`);
+  else if (comps.length) fr.push(`Nenhum componente puxou o CPC único para baixo vs ${dBR(c.dias[comp])}.`);
+  if (H < 10) fr.push("Início do dia — a previsão fica mais firme a partir das ~10h.");
+  else if (v.prev < v.esperado && H < 20) fr.push(`Para chegar ao esperado faltariam <b>${fI.format(v.esperado - v.prev)}</b> acima do ritmo atual nas próximas ${20 - H}h.`);
+  else if (H < 20) fr.push("No ritmo atual o dia supera o esperado.");
+  const baixo = esc !== "__TOTAL__" && (c.placar_fases[esc] || 0) > .15;
+  $("cardDia").innerHTML = `${al.ativo ? `<div class="alerta">⚠ Atenção — o erro médio da previsão das 12h nos últimos 5 dias está em ${pctAbs(al.erro_12h_5d)}, acima do limite de ${pctAbs(al.limite, 0)}. Algo mudou no ritmo da operação.</div>` : ""}
+    <div class="ctitle">🎯 Previsão de fechamento do dia · CPC único<span class="sp"></span><span class="selo">${selo}</span></div>
+    <div class="escopo">${botoesEsc}</div>
+    <div class="linha modo-prev"><span class="rot">Previsão</span><button data-mp="vivo" class="${S.modoPrev === "vivo" ? "on" : ""}">Ao vivo</button><button data-mp="fixa" class="${S.modoPrev === "fixa" ? "on" : ""}">Fixa (9h · 1ª do dia)</button>
+      ${S.modoPrev === "fixa" && H <= 9 ? '<span class="muted">a previsão fixa é a das 9h: mova o "Agora" para depois das 9h para ver o desvio</span>' : ""}</div>
+    ${baixo ? `<div class="aviso-lime" style="background:rgba(255,159,67,.13);border-color:rgba(255,159,67,.6)">⚠ Fase de baixo volume: o erro típico às 12h passa de 15%. Use a previsão com cautela.</div>` : ""}
+    <div class="tiles">${tiles.map(([l, val, s]) => `<div class="tile"><div class="tl">${l}</div><div class="tv">${val}</div><div class="ts">${s}</div></div>`).join("")}</div>
+    <div class="narr">${fr.join(" ")}</div>
+    <div class="chart-help">📖 <b>Bronze</b> = CPC único acumulado até <b>agora</b> (mova o "Agora" no topo). <b>Verde tracejado</b> = previsão de como o dia fecha, com a <b>faixa provável</b> (8 de cada 10 dias caem nela). <b>Dourado pontilhado</b> = esperado (média de 20 dias). <b>Cinza</b> = ${comp != null ? dBR(c.dias[comp]) : "comparação"}, no mesmo horário. A previsão usa a razão de funil: num dia normal, o total do dia é um múltiplo estável do que já foi feito até a hora.${S.modoPrev === "fixa" ? " No modo <b>Fixa</b>, a previsão é a das 9h, e a base do gráfico mostra o desvio hora a hora." : ""}
+      <label class="chk" style="margin:6px 0 0"><input type="checkbox" id="revelar" ${S.revelar ? "checked" : ""}> revelar como este dia simulado realmente terminou</label></div>
+    <div class="chart h340"><canvas id="chFcst"></canvas></div>
+    <div class="chart-help" style="margin-top:14px">📖 <b>Por que o CPC único mudou</b> vs ${comp != null ? dBR(c.dias[comp]) : "a comparação"} até ${H}h: cada barra é uma fase, dividida em <b>estoque</b> (carteira maior ou menor), <b>esforço</b> (acionamentos por contrato) e <b>taxa de contato</b> (quanto do esforço vira CPC único). Barras à esquerda do zero puxaram para baixo.</div>
+    <div class="chart"><canvas id="chPred"></canvas></div>`;
+  QS("#cardDia [data-esc]").forEach(b => b.onclick = () => { S.escopo = b.dataset.esc; renderDia(); });
+  QS("#cardDia [data-mp]").forEach(b => b.onclick = () => { S.modoPrev = b.dataset.mp; renderDia(); });
+  $("revelar").onchange = e => { S.revelar = e.target.checked; renderDia(); };
+  const lab = c.horas.map(h => h + "h"), alvo = fixa ? vf : v, base = fixa ? 1 : iH;
+  const pPrev = projetar(ac, perf, base, alvo.prev), pLo = projetar(ac, perf, base, alvo.lo), pHi = projetar(ac, perf, base, alvo.hi);
+  const futuro = i => i > iH, naFaixa = i => futuro(i) || (fixa && i >= 1);
+  const ds = [
+    {label: "_p10", data: pLo.map((x, i) => naFaixa(i) ? x : null), borderColor: "transparent", pointRadius: 0},
+    {label: "Faixa provável (80%)", data: pHi.map((x, i) => naFaixa(i) ? x : null), borderColor: "transparent", backgroundColor: "rgba(91,229,154,.13)", fill: "-1", pointRadius: 0},
+    {label: "Realizado", data: ac.map((x, i) => i <= iH ? x : null), borderColor: "#B98A3D", backgroundColor: "#B98A3D", borderWidth: 3, tension: .25, pointRadius: 2, spanGaps: false},
+    {label: "Esperado", data: perf.map(x => x * v.esperado), borderColor: "#D4A72C", backgroundColor: "#D4A72C", borderWidth: 2, borderDash: [2, 3], pointRadius: 3},
+    {label: fixa ? "Previsão das 9h (fixa)" : "Previsão", data: pPrev.map((x, i) => i >= base ? x : null), borderColor: "#5be59a", backgroundColor: "#5be59a", borderWidth: 3, borderDash: [7, 4], pointRadius: 3}];
+  if (acComp) ds.push({label: `Comparação (${dBR(c.dias[comp])})`, data: acComp, borderColor: "rgba(154,160,166,.55)", backgroundColor: "rgba(154,160,166,.9)", borderWidth: 1.5, borderDash: [3, 3], pointRadius: 2});
+  if (S.revelar) ds.push({label: `Real (fechou em ${fI.format(real)})`, data: ac.map((x, i) => i >= iH ? x : null), borderColor: "#8fb3ff", backgroundColor: "#8fb3ff", borderWidth: 2, pointRadius: 2});
+  const rotulos = {id: "rotulos", afterDatasetsDraw(ch) {
+    const g = ch.ctx; g.save(); g.font = "10px Inter"; g.textAlign = "center";
+    ch.data.datasets.forEach((d, di) => {
+      if (!ch.isDatasetVisible(di)) return;
+      const tipo = d.label.startsWith("Comparação") ? "c" : d.label.startsWith("Previsão") ? "p" : d.label === "Esperado" ? "e" : null;
+      if (!tipo) return;
+      ch.getDatasetMeta(di).data.forEach((pt, i) => { const val = d.data[i]; if (val == null) return;
+        if (tipo !== "c" && !futuro(i)) return;
+        if (ch.width < 700 && i % 2) return;
+        g.fillStyle = tipo === "c" ? "rgba(200,205,212,.95)" : tipo === "p" ? "#7af0ad" : "#D4A72C";
+        g.fillText(fI.format(val), pt.x, pt.y + (tipo === "c" ? 15 : tipo === "p" ? -10 : -22)); });
+    }); g.restore(); }};
+  const desvios = {id: "desvios", afterDatasetsDraw(ch) {
+    if (!fixa) return; const g = ch.ctx, a = ch.chartArea; g.save(); g.textAlign = "center"; g.font = "bold 11px Inter";
+    for (let i = 2; i <= iH; i++) { if (!projF[i]) continue; const dv = ac[i] / projF[i] - 1;
+      g.fillStyle = dv >= .03 ? "#5be59a" : dv <= -.03 ? "#ff6b81" : "#ff9f43"; g.fillText(pct(dv), ch.scales.x.getPixelForValue(i), a.bottom - 8); }
+    g.font = "10px Inter"; g.textAlign = "right"; g.fillStyle = css("--acs"); g.fillText("desvio vs previsão fixa", a.right, a.bottom - 22); g.restore(); }};
+  mk("chFcst", {type: "line", data: {labels: lab, datasets: ds}, plugins: [pluginAgora(iH), rotulos, desvios],
+    options: {animation: RM ? false : {duration: 1000, easing: "easeOutQuart"}, interaction: {mode: "index", intersect: false},
+      plugins: {legend: leg, tooltip: {filter: i => !i.dataset.label.startsWith("_") && !i.dataset.label.startsWith("Faixa"),
+        itemSort: (a, b) => (b.raw || 0) - (a.raw || 0), callbacks: {label: i => `${i.dataset.label}: ${fI.format(i.raw)}`,
+        afterBody: it => { const i = it[0].dataIndex, l = [];
+          if (pLo[i] != null && naFaixa(i)) l.push(`Faixa provável: ${fI.format(pLo[i])} – ${fI.format(pHi[i])}`);
+          if (fixa && i <= iH && projF[i]) l.push(`Desvio vs previsão das 9h: ${sinal(ac[i] - projF[i], fI.format(Math.abs(ac[i] - projF[i])))} (${pct(ac[i] / projF[i] - 1)})`);
+          return l; }}}},
+      scales: {y: {beginAtZero: true, title: {display: true, text: "CPC único acumulado"}}}}});
+  const fases = Object.keys(dec).filter(f => esc === "__TOTAL__" || f === esc);
+  mk("chPred", {type: "bar", data: {labels: fases, datasets: [
+    {label: "Estoque", data: fases.map(f => dec[f].estoque), backgroundColor: "rgba(185,138,61,.78)", stack: "s"},
+    {label: "Esforço", data: fases.map(f => dec[f].esforco), backgroundColor: "rgba(212,167,44,.82)", stack: "s"},
+    {label: "Taxa de contato", data: fases.map(f => dec[f].taxa), backgroundColor: "rgba(91,229,154,.82)", stack: "s"}]},
+    options: {indexAxis: "y", animation: RM ? false : {duration: 1000}, plugins: {legend: leg, tooltip: {callbacks: {label: i => `${i.dataset.label}: ${sinal(i.raw, fI.format(Math.abs(i.raw)))}`}}},
+      scales: {x: {stacked: true, title: {display: true, text: `Contribuição p/ Δ CPC único até ${H}h`}}, y: {stacked: true}}}});
+}
+
+/* ---------- boletos por canal, funil do mês, confiabilidade, placar ---------- */
+function renderCanal() {
+  const b = C().boletos_canal, ord = [...b].sort((x, y) => (y.conversao || 0) - (x.conversao || 0));
+  const ins = ord.length > 1 ? `💡 <b>${ord[0].canal}</b> converte ${pctAbs(ord[0].conversao, 0)} dos boletos em pagamento, contra ${pctAbs(ord[1].conversao, 0)} no ${ord[1].canal}.` : "";
+  $("cardCanal").innerHTML = `<div class="ctitle">📨 Boletos por canal</div>${ins ? `<div class="mes-insight">${ins}</div>` : ""}
+    <div class="chart h230"><canvas id="chMesCan"></canvas></div>
+    <div class="tabwrap"><table class="mtab"><tr><th>Canal</th><th>Emitidos no mês</th><th>Pagos no mês</th><th>Valor pago</th><th>Conversão*</th></tr>
+    ${b.map(x => `<tr><td>${x.canal}</td><td>${fI.format(x.emitidos)}</td><td>${fI.format(x.pagos)}</td><td>${brlC(x.valor)}</td><td><b>${pctAbs(x.conversao)}</b></td></tr>`).join("")}</table></div>
+    <div class="muted" style="margin-top:6px">* Conversão = boletos pagos ÷ boletos emitidos no mês.</div>`;
+  mk("chMesCan", {type: "bar", data: {labels: b.map(x => x.canal), datasets: [{label: "Conversão", data: b.map(x => (x.conversao || 0) * 100), backgroundColor: "rgba(212,167,44,.78)", borderRadius: 4}]},
+    options: {indexAxis: "y", plugins: {legend: {display: false}, tooltip: {callbacks: {label: i => `Conversão: ${f1.format(i.raw)}% · emitidos ${fI.format(b[i.dataIndex].emitidos)} · pagos ${fI.format(b[i.dataIndex].pagos)}`}}},
+      scales: {x: {min: 0, max: 100, ticks: {callback: v => v + "%"}}}}});
+}
+function renderFunilMes() {
+  const f = C().funil_mes, N = {fups: "Acionamentos", cpc: "CPC", cpca: "Acordos", boleto: "Boletos"};
+  let h = "";
+  f.etapas.forEach((e, i) => {
+    const v = e.ant ? e.atual / e.ant - 1 : null;
+    if (i) { const pe = f.etapas[i - 1];
+      h += `<div class="mfa">➜<span>${pctAbs(e.atual / pe.atual)}</span><span class="muted">antes ${pctAbs(e.ant / pe.ant)}</span></div>`; }
+    h += `<div class="mfs${i === f.etapas.length - 1 ? " fim" : ""}"><div class="mfl">${N[e.m]}</div><div class="mfv">${fI.format(e.atual)}</div>
+      <div class="muted">mês ant.: ${fI.format(e.ant)} · <b class="${cor3(v)}">${pct(v)}</b></div></div>`;
+  });
+  $("cardFunilMes").innerHTML = `<div class="ctitle">🔻 Funil do mês · média por dia<span class="sp"></span><span class="muted">vs mesmo período de ${f.mes_ant}</span></div>
+    <div class="funil">${h}</div><div class="muted" style="margin-top:10px">Estoque médio: ${fI.format(f.estoque)} contratos (mês anterior: ${fI.format(f.estoque_ant)}).</div>
+    <div class="chart-help" style="margin-top:10px">📖 Média por dia útil do mês até hoje, comparada com os mesmos dias úteis do mês anterior. As setas mostram quanto de uma etapa passa para a seguinte.</div>`;
+}
+function renderConf() {
+  const c = C(), k = c.confiab, pm = c.placar_mes, T = {inicio: "1ª semana", meio: "Meio", "3/4": "¾ do mês", final: "Reta final"};
+  $("cardConf").innerHTML = `<div class="ctitle">🛡 Confiabilidade dos modelos<span class="sp"></span><span class="muted">medida fora da amostra: cada dia foi previsto só com os dias anteriores</span></div>
+    <div class="conf-row">
+      <div class="tile"><div class="tl">Erro médio às 12h</div><div class="tv">${pctAbs(k.erro_12h)}</div><div class="ts">WMAPE em ${k.dias} dias úteis</div></div>
+      <div class="tile"><div class="tl">Cobertura da faixa</div><div class="tv">${pctAbs(k.cobertura, 0)}</div><div class="ts">alvo: 80% dos dias dentro da faixa</div></div>
+      <div class="tile"><div class="tl">Acerto de direção</div><div class="tv">${pctAbs(k.direcao, 0)}</div><div class="ts">disse "acima/abaixo do esperado" e acertou</div></div>
+      <div class="tile"><div class="tl">Viés</div><div class="tv">${pct(k.vies)}</div><div class="ts">positivo = otimista</div></div></div>
+    <div class="mesgrid"><div class="chart h260"><canvas id="chConfDia"></canvas></div><div class="tabwrap">
+      <table class="mtab"><tr><th>Previsão do mês ×</th>${pm.map(p => `<th>${T[p.trecho]}</th>`).join("")}</tr>
+      <tr><td>Erro médio</td>${pm.map(p => `<td>${pctAbs(p.wmape)}</td>`).join("")}</tr>
+      <tr><td>Viés</td>${pm.map(p => `<td>${pct(p.vies)}</td>`).join("")}</tr>
+      <tr><td>Faixa acertou</td>${pm.map(p => `<td><b>${pctAbs(p.cobertura, 0)}</b></td>`).join("")}</tr></table>
+      <div class="muted" style="margin-top:8px">Meses fechados, CPC único. A faixa do mês mira 90% dos dias.</div></div></div>
+    <div class="chart-help" style="margin-top:12px">📖 O erro da previsão do dia cai conforme o dia avança: quanto mais já aconteceu, menos falta prever. <b>Cobertura</b> perto do alvo indica uma faixa honesta — nem estreita demais (promete certeza que não tem), nem larga demais (não ajuda a decidir).</div>`;
+  mk("chConfDia", {type: "line", data: {labels: k.erro_por_hora.map(x => x.hora + "h"), datasets: [{label: "Erro médio", data: k.erro_por_hora.map(x => x.wmape * 100),
+    borderColor: "#5be59a", backgroundColor: "#5be59a", borderWidth: 2, pointRadius: 4, tension: .25}]},
+    options: {plugins: {legend: {display: false}, title: {display: true, text: "Erro médio da previsão do dia, por hora em que é feita"},
+      tooltip: {callbacks: {label: i => `Erro médio: ${f1.format(i.raw)}%`}}},
+      scales: {y: {beginAtZero: true, ticks: {callback: v => v + "%"}}, x: {title: {display: true, text: "hora da previsão"}}}}});
 }
 function renderPlacar() {
-  const t = (cab, linhas) => `<table><tr>${cab.map(c => `<th>${c}</th>`).join("")}</tr>${linhas.map(l => `<tr>${l.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</table>`;
-  $("tabPlacar").innerHTML = t(["Hora de corte", "Erro (WMAPE)", "Viés", "Cobertura", "Dias"],
-    D.placar_dia.map(p => [p.hora + "h", pct(p.wmape), (p.vies >= 0 ? "+" : "") + pct(p.vies), pct(p.cobertura, 0), fmt.format(p.dias)]));
-  const NT = {inicio: "Início (1–7)", meio: "Meio (8–15)", "3/4": "3/4 (16–22)", final: "Final (23+)"};
-  $("tabPlacarMes").innerHTML = t(["Trecho", "Erro (WMAPE)", "Viés", "Cobertura"],
-    D.placar_mes.map(p => [NT[p.trecho], pct(p.wmape), (p.vies >= 0 ? "+" : "") + pct(p.vies), pct(p.cobertura, 0)]));
-  $("tabUltimos").innerHTML = t(["Dia", "Previsão 12h", "Faixa", "Real", "Erro", "Na faixa?", "Erro 5 dias"],
-    D.ultimos_dias.map(u => [dataBR(u.dia), fmt.format(u.prev), fmt.format(u.lo) + "–" + fmt.format(u.hi), fmt.format(u.real),
-      (u.erro >= 0 ? "+" : "") + pct(u.erro), u.dentro ? "✔" : "✖", (u.erro_5d > D.alerta.limite ? "⚠ " : "") + pct(u.erro_5d)]));
+  const c = C(), s = c.placar_mes_serie;
+  $("cardPlacar").innerHTML = `<div class="ctitle">🎯 Placar do modelo · previsões registradas × realizado<span class="sp"></span><span class="muted">registro desde ${c.registro_desde ? dBRY(c.registro_desde) : "—"}</span></div>
+    <div class="chart-help">📖 Cada dia passado foi previsto só com o que se sabia naquele dia e comparado com o que aconteceu. <b>Erro</b> = soma dos erros ÷ soma do realizado (WMAPE). <b>Viés</b> positivo = otimista. ⚠️ na última coluna marca os dias em que o erro médio das 12h nos últimos 5 dias passou do limite de ${pctAbs(c.alerta.limite, 0)}.</div>
+    <div class="mesgrid"><div class="tabwrap"><table class="mtab"><tr><th>Previsão das</th><th>Erro médio</th><th>Viés</th><th>Real dentro da faixa</th><th>Dias</th></tr>
+      ${c.placar_dia.map(p => `<tr><td>${p.hora}h</td><td>${pctAbs(p.wmape)}</td><td>${pct(p.vies)}</td><td>${pctAbs(p.cobertura, 0)}</td><td>${fI.format(p.dias)}</td></tr>`).join("")}</table></div>
+      <div class="tabwrap"><table class="mtab"><tr><th>Dia</th><th>Previsto 12h</th><th>Faixa</th><th>Real</th><th>Erro</th><th>Erro 5 dias</th></tr>
+      ${c.ultimos_dias.map(u => `<tr><td>${dBR(u.dia)}</td><td>${fI.format(u.prev)}</td><td>${fI.format(u.lo)}–${fI.format(u.hi)}</td><td>${fI.format(u.real)} ${u.dentro ? "✅" : "⚠️"}</td><td>${pct(u.erro)}</td><td>${u.erro_5d > c.alerta.limite ? "⚠️ " : ""}${pctAbs(u.erro_5d)}</td></tr>`).join("")}</table></div></div>
+    <div class="sub-t">📅 Previsão do mês ao longo do mês · CPC único (total)</div>
+    <div class="chart h270"><canvas id="chPlacarMes"></canvas></div>
+    <div class="muted" style="margin-top:6px">Pontos vazados = previsões reconstruídas (cada uma feita só com os dados até aquele dia).</div>
+    ${c.meses_fechados.length ? `<div class="tabwrap"><table class="mtab"><tr><th>Mês fechado</th><th>Real</th><th>1ª semana</th><th>Meio</th><th>¾</th><th>Reta final</th><th>Faixa acertou</th></tr>
+      ${c.meses_fechados.map(m => `<tr><td>${m.mes}</td><td>${fI.format(m.real)}</td><td>${pctAbs(m.inicio)}</td><td>${pctAbs(m.meio)}</td><td>${pctAbs(m["3/4"])}</td><td>${pctAbs(m.final)}</td><td><b>${pctAbs(m.cobertura, 0)}</b></td></tr>`).join("")}</table></div>` : ""}`;
+  mk("chPlacarMes", {type: "line", data: {labels: s.map(x => dBR(x.dia)), datasets: [
+    {label: "_lo", data: s.map(x => x.lo), borderColor: "transparent", pointRadius: 0},
+    {label: "Faixa provável", data: s.map(x => x.hi), borderColor: "transparent", backgroundColor: "rgba(91,229,154,.13)", fill: "-1", pointRadius: 0},
+    {label: "Previsão de fechamento do mês", data: s.map(x => x.prev), borderColor: "#d4a72c", backgroundColor: "transparent", borderWidth: 2, pointRadius: 4, pointBorderColor: "#d4a72c"},
+    {label: "Realizado até o dia", data: s.map(x => x.realizado_ate), borderColor: "#8fb3ff", borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0}]},
+    options: {interaction: {mode: "index", intersect: false}, plugins: {legend: leg, tooltip: {filter: i => !i.dataset.label.startsWith("_"),
+      callbacks: {label: i => `${i.dataset.label}: ${fI.format(i.raw)}${i.datasetIndex === 2 ? " (reconstruída)" : ""}`}}},
+      scales: {y: {beginAtZero: true}}}});
 }
-function renderPM() { renderPrev(); renderMes(); renderPlacar(); }
-function render() { $("horaTxt").textContent = S.hora + "h"; marcarAtalhos(); S.aba === "hh" ? renderHH() : renderPM(); }
+function renderPM(trocouInd) {
+  if (!C().mes[S.ind] && !C().mes_sem_prev[S.ind]) S.ind = "cpc_unico";
+  renderMesHero(); renderCurvaMes(); renderDia(); renderCanal(); renderFunilMes(); renderConf(); renderPlacar();
+  if (trocouInd || !S.st.dados || S.st.dados.ind !== S.ind) { pararStory(); renderStory(); irEtapa(0); if (!RM) tocarStory(false); }
+}
 
-// ---------------- controles ----------------
-function idxAtalho(d, tipo) { return D.atalhos[d][tipo]; }   // pré-calculado em Python; null = fora da janela
-function marcarAtalhos() {
-  document.querySelectorAll("[data-atalho]").forEach(b => b.disabled = idxAtalho(+$("diaA").value, b.dataset.atalho) == null);
-  document.querySelectorAll("[data-patalho]").forEach(b => {
-    const t = b.dataset.patalho === "30" ? "mes_anterior" : "D-7";
-    b.disabled = idxAtalho(+$("pA1").value, t) == null || idxAtalho(+$("pA2").value, t) == null;
-  });
+/* ======================= controles ======================= */
+function opcoesHora(sel, d) { const max = d === HOJE() ? S.agora : 20, atual = +sel.value || max;
+  sel.innerHTML = C().horas.filter(h => h <= max).map(h => `<option value="${h}">${h}h</option>`).join(""); sel.value = Math.min(atual, max); }
+function montarCarteira() {
+  const c = C(), dl = c.dias.length - 1;
+  const opts = c.dias.map((d, i) => `<option value="${i}">${dBRY(d)} (${DSEM[dow(d)]})</option>`).join("");
+  $("diaA").innerHTML = opts; $("diaB").innerHTML = opts; $("diaA").value = dl;
+  const pr = c.presets[dl]; $("diaB").value = pr.mes_passado ?? pr["D-1"] ?? Math.max(0, dl - 1);
+  $("horaA").innerHTML = ""; $("horaB").innerHTML = "";
+  opcoesHora($("horaA"), dl); opcoesHora($("horaB"), +$("diaB").value); $("horaA").value = S.agora; $("horaB").value = S.agora;
+  for (const id of ["pA1", "pA2", "pB1", "pB2"]) { $(id).min = c.dias[0]; $(id).max = c.dias[dl]; }
+  const ini = c.dias.find(d => d.slice(0, 7) === c.dias[dl].slice(0, 7));
+  $("pA1").value = ini; $("pA2").value = c.dias[dl];
+  const pA = c.presets[c.dias.indexOf(ini)].mes_passado, pB = c.presets[dl].mes_passado;
+  $("pB1").value = pA != null ? c.dias[pA] : c.dias[0]; $("pB2").value = pB != null ? c.dias[pB] : c.dias[0];
+  S.ocultas.clear(); S.canal = ""; S.hm = "ate"; S.horasEsp = new Set(c.horas); S.escopo = "__TOTAL__";
+  QS("[data-hm]").forEach(b => b.classList.toggle("on", b.dataset.hm === "ate"));
+  $("horasel").classList.add("oculto"); QS(".dim").forEach(e => e.classList.remove("dim"));
+  $("segCanal").innerHTML = "<b>Canal</b>" + ["", ...c.canais].map(x => `<button data-canal="${x}" class="${x === "" ? "on" : ""}">${x || "Todas"}</button>`).join("");
+  QS("#segCanal button").forEach(b => b.onclick = () => { S.canal = b.dataset.canal; QS("#segCanal button").forEach(x => x.classList.toggle("on", x === b)); render(); });
+  $("fasebar").innerHTML = '<span class="fasebar-l">FASES:</span>' + c.fases.map(f => `<span class="chip" data-fase="${f}" role="button" tabindex="0" aria-pressed="true"><i></i>${f}</span>`).join("");
+  QS("#fasebar .chip").forEach(ch => { const alterna = () => {
+    const f = ch.dataset.fase; if (S.ocultas.has(f)) S.ocultas.delete(f); else if (fasesVis().length > 1) S.ocultas.add(f);
+    ch.classList.toggle("off", S.ocultas.has(f)); ch.setAttribute("aria-pressed", !S.ocultas.has(f)); render(); };
+    ch.onclick = alterna; ch.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alterna(); } }; });
+  $("horasel").innerHTML = "Horas: " + c.horas.map(h => `<label><input type="checkbox" data-h="${h}" checked> ${h}h</label>`).join("") +
+    '<button data-hs="todas">Todas</button><button data-hs="limpar">Limpar</button>';
+  QS("#horasel input").forEach(i => i.onchange = () => { const h = +i.dataset.h; i.checked ? S.horasEsp.add(h) : S.horasEsp.delete(h); render(); });
+  QS("#horasel [data-hs]").forEach(b => b.onclick = () => { const todas = b.dataset.hs === "todas";
+    S.horasEsp = new Set(todas ? c.horas : []); QS("#horasel input").forEach(i => i.checked = todas); render(); });
+  renderPresets();
+  const pmBtn = QS('[data-view="pm"]')[0]; pmBtn.disabled = !c.com_mes; pmBtn.title = c.com_mes ? "" : `Disponível para ${DADOS.carteiras[0].nome}`;
+  if (!c.com_mes && S.view === "pm") trocarVisao("hh");
 }
-function grupo(attr, fn) {
-  document.querySelectorAll(`[data-${attr}]`).forEach(b => b.addEventListener("click", () => {
-    document.querySelectorAll(`[data-${attr}]`).forEach(x => x.classList.toggle("on", x === b)); fn(b.dataset[attr]); render();
-  }));
+function renderPresets() {
+  const c = C(), p = c.presets[+$("diaA").value] || {};
+  const N = {"D-1": "Ontem (D-1)", sexta: "Sexta passada", mes_passado: "Mesmo dia útil mês passado", "D-7": "7 dias atrás"};
+  $("presetsDia").innerHTML = Object.keys(N).filter(k => p[k] != null).map(k => `<button class="preset" data-pr="${k}">${N[k]}</button>`).join("");
+  QS("#presetsDia .preset").forEach(b => b.onclick = () => { $("diaB").value = p[b.dataset.pr]; opcoesHora($("horaB"), +$("diaB").value); render(); });
+}
+function trocarVisao(v) {
+  S.view = v; QS("#viewbar [data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === v));
+  $("v-hh").classList.toggle("oculto", v !== "hh"); $("v-pm").classList.toggle("oculto", v !== "pm");
+  if (v !== "pm") pararStory();
+  destruir(); render(true);
+}
+function render(trocouInd) {
+  $("agoraTxt").textContent = S.agora + "h";
+  if (S.view === "hh") renderHH(); else if (C().com_mes) renderPM(trocouInd);
+}
+function aplicarTema(t) {
+  if (!["midnight", "dark", "light"].includes(t)) t = "midnight";
+  document.body.dataset.theme = t; store.set("tema", t);
+  QS("#segTema [data-tema]").forEach(b => b.classList.toggle("on", b.dataset.tema === t));
+  window.redesenharFundo();
 }
 function iniciar() {
-  $("hojeTxt").textContent = D.hoje.split("-").reverse().join("/");
-  const opts = D.dias.map((d, i) => `<option value="${i}">${dataBR(d)} (${["dom","seg","ter","qua","qui","sex","sáb"][new Date(d + "T00:00:00").getDay()]})</option>`).join("");
-  ["diaA", "diaB", "pA1", "pA2", "pB1", "pB2"].forEach(id => $(id).innerHTML = opts);
-  $("diaA").value = HOJE; $("diaB").value = idxAtalho(HOJE, "D-7");
-  $("pA2").value = HOJE; $("pA1").value = Math.max(0, HOJE - 4); $("pB2").value = HOJE - 5; $("pB1").value = Math.max(0, HOJE - 9);
-  D.canais.forEach(c => $("canal").insertAdjacentHTML("beforeend", `<option>${c}</option>`));
-  $("chipsFases").innerHTML = D.fases.map(f => `<label><input type="checkbox" checked data-fase="${f}"> ${f}</label>`).join("");
-  $("horasEsp").innerHTML = D.horas.map(h => `<label><input type="checkbox" ${S.esp.has(h) ? "checked" : ""} data-h="${h}"> ${h}h</label>`).join("");
-  $("indMes").innerHTML = Object.entries(NOMES_IND).map(([k, n]) => `<option value="${k}" ${k === S.ind ? "selected" : ""}>${n}</option>`).join("");
-
-  $("hora").oninput = e => { S.hora = +e.target.value; render(); };
-  document.querySelectorAll("[data-aba]").forEach(b => b.onclick = () => {
-    document.querySelectorAll("[data-aba]").forEach(x => x.classList.toggle("on", x === b));
-    S.aba = b.dataset.aba; $("aba-hh").classList.toggle("oculto", S.aba !== "hh"); $("aba-pm").classList.toggle("oculto", S.aba !== "pm"); render();
-  });
-  grupo("modo", v => { S.modo = v; $("ctl-dia").classList.toggle("oculto", v !== "dia"); $("ctl-periodo").classList.toggle("oculto", v !== "periodo"); });
-  grupo("agr", v => { S.agr = v; $("horasEsp").classList.toggle("oculto", v !== "esp"); });
-  grupo("vis", v => { S.vis = v; });
-  document.querySelectorAll("[data-atalho]").forEach(b => b.onclick = () => { $("diaB").value = idxAtalho(+$("diaA").value, b.dataset.atalho); render(); });
-  document.querySelectorAll("[data-patalho]").forEach(b => b.onclick = () => {
-    const tipo = b.dataset.patalho === "30" ? "mes_anterior" : "D-7";
-    $("pB1").value = idxAtalho(+$("pA1").value, tipo); $("pB2").value = idxAtalho(+$("pA2").value, tipo); render();
-  });
-  ["diaA", "diaB", "pA1", "pA2", "pB1", "pB2", "canal", "metCurva"].forEach(id => $(id).onchange = () => { S.canal = $("canal").value; render(); });
-  $("chipsFases").onchange = e => { e.target.checked ? S.ocultas.delete(e.target.dataset.fase) : S.ocultas.add(e.target.dataset.fase);
-    if (fasesVis().length === 0) { e.target.checked = true; S.ocultas.delete(e.target.dataset.fase); } render(); };
-  $("horasEsp").onchange = e => { const h = +e.target.dataset.h; e.target.checked ? S.esp.add(h) : S.esp.delete(h); if (!S.esp.size) { S.esp.add(h); e.target.checked = true; } render(); };
-  $("indMes").onchange = e => { S.ind = e.target.value; render(); };
-  $("revelar").onclick = () => { S.revelar = !S.revelar; $("revelar").textContent = S.revelar ? "🙈 Esconder o fechamento real" : "👁 Revelar o fechamento real"; render(); };
-  $("tema").onclick = () => {
-    const atual = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    document.documentElement.dataset.theme = atual === "dark" ? "light" : "dark";
-    try { localStorage.setItem("tema", document.documentElement.dataset.theme); } catch (e) {}
-    render();
-  };
-  try { const t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
-  if (location.hash === "#previsoes" || location.search.includes("aba=previsoes")) document.querySelector('[data-aba="pm"]').click();   // link direto para a aba
-  else render();
+  aplicarTema(store.get("tema") || "midnight");
+  QS("#segTema [data-tema]").forEach(b => b.onclick = () => { aplicarTema(b.dataset.tema); destruir(); render(); });
+  $("tabs").innerHTML = DADOS.carteiras.map((c, i) => `<button role="tab" aria-selected="${i === 0}" data-cart="${i}" class="${i === 0 ? "on" : ""}">${c.nome}</button>`).join("");
+  QS("#tabs [data-cart]").forEach(b => b.onclick = () => { S.cart = +b.dataset.cart;
+    QS("#tabs [data-cart]").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", x === b); });
+    for (const k in ultimoKpi) delete ultimoKpi[k];
+    montarCarteira(); destruir(); render(true); });
+  QS("#viewbar [data-view]").forEach(b => b.onclick = () => { if (!b.disabled) trocarVisao(b.dataset.view); });
+  $("agora").oninput = e => { S.agora = +e.target.value;
+    opcoesHora($("horaA"), +$("diaA").value); opcoesHora($("horaB"), +$("diaB").value);
+    if (+$("diaA").value === HOJE()) $("horaA").value = S.agora; render(); };
+  QS("#segModo [data-modo]").forEach(b => b.onclick = () => { S.modo = b.dataset.modo;
+    QS("#segModo button").forEach(x => x.classList.toggle("on", x === b));
+    $("ctl-dia").classList.toggle("oculto", S.modo !== "dia"); $("ctl-per").classList.toggle("oculto", S.modo !== "periodo");
+    if (S.modo === "periodo" && S.hm === "esp") QS('[data-hm="ate"]')[0].click(); else render(); });
+  QS("[data-hm]").forEach(b => b.onclick = () => { S.hm = b.dataset.hm; QS("[data-hm]").forEach(x => x.classList.toggle("on", x === b));
+    const esp = S.hm === "esp"; $("horasel").classList.toggle("oculto", !esp);
+    if (esp) { S.horasEsp = new Set(C().horas); QS("#horasel input").forEach(i => i.checked = true); }
+    ["horaA", "horaB"].forEach(id => $(id).closest("label").classList.toggle("dim", esp));
+    ["acumA", "acumB"].forEach(id => $(id).closest("label").classList.toggle("dim", esp)); render(); });
+  $("diaA").onchange = () => { opcoesHora($("horaA"), +$("diaA").value); renderPresets(); render(); };
+  $("diaB").onchange = () => { opcoesHora($("horaB"), +$("diaB").value); render(); };
+  ["horaA", "horaB", "acumA", "acumB", "pA1", "pA2", "pB1", "pB2"].forEach(id => $(id).onchange = () => render());
+  QS("[data-pp]").forEach(b => b.onclick = () => { const c = C(), tipo = b.dataset.pp === "mes" ? "mes_passado" : "D-7";
+    const i1 = c.dias.indexOf($("pA1").value), i2 = c.dias.indexOf($("pA2").value);
+    const a = i1 >= 0 ? c.presets[i1][tipo] : null, z = i2 >= 0 ? c.presets[i2][tipo] : null;
+    if (a != null && z != null) { $("pB1").value = c.dias[a]; $("pB2").value = c.dias[z]; render(); } });
+  QS("#segVis [data-vis]").forEach(b => b.onclick = () => { S.vis = b.dataset.vis; QS("#segVis button").forEach(x => x.classList.toggle("on", x === b)); render(); });
+  QS("#segAberto [data-ab]").forEach(b => b.onclick = () => { S.aberto = b.dataset.ab === "1"; QS("#segAberto button").forEach(x => x.classList.toggle("on", x === b)); render(); });
+  QS("#segExib [data-ex]").forEach(b => b.onclick = () => { S.exib = b.dataset.ex; QS("#segExib button").forEach(x => x.classList.toggle("on", x === b)); render(); });
+  montarCarteira();
+  if (/previsoes/.test(location.search + location.hash)) trocarVisao("pm"); else render(true);
 }
 iniciar();
 </script>
