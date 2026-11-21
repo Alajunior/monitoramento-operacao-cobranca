@@ -2,8 +2,8 @@
 
 Painel que uma operação de cobrança acompanha o dia todo: produção hora a hora, comparação com qualquer dia ou período, funil do acionamento ao boleto e, dentro dele, um modelo que **prevê como o dia e o mês vão fechar** e **mostra no placar se acerta**.
 
-**▶ Abrir o painel:** https://SEU_USUARIO.github.io/monitoramento-operacao-cobranca/ (abre no navegador, sem instalar nada; funciona no celular)
-· [direto nas previsões](https://SEU_USUARIO.github.io/monitoramento-operacao-cobranca/?aba=previsoes)
+**▶ Abrir o painel:** https://Alajunior.github.io/monitoramento-operacao-cobranca/ (abre no navegador, sem instalar nada; funciona no celular)
+· [direto nas previsões](https://Alajunior.github.io/monitoramento-operacao-cobranca/?aba=previsoes)
 
 > **Todos os dados são sintéticos**, gerados por [`dados/gerar_operacao.py`](dados/gerar_operacao.py) (seed 42). Nenhum dado real de cliente ou de empresa. O painel reproduz o funcionamento de um painel que construí e mantenho em produção; o código foi escrito do zero.
 
