@@ -7,13 +7,14 @@ from pathlib import Path
 
 import pandas as pd
 
-PASTA = Path(__file__).resolve().parent.parent / "dados" / "operacao"
+PASTA = Path(__file__).resolve().parent.parent / "dados" / "operacao" / "veiculos"   # carteira principal
 HORAS = list(range(8, 21))
 
 
 def carregar(pasta: Path = PASTA) -> dict[str, pd.DataFrame]:
     pasta = Path(pasta)
-    return {n: pd.read_csv(pasta / f"{n}.csv", parse_dates=["dia"]) for n in ["producao", "cpc_eventos", "estoque"]}
+    nomes = ["producao", "cpc_eventos", "estoque"] + (["faixas"] if (pasta / "faixas.csv").exists() else [])
+    return {n: pd.read_csv(pasta / f"{n}.csv", parse_dates=["dia"]) for n in nomes}
 
 
 def cpc_unico_acumulado(eventos: pd.DataFrame, dia=None) -> pd.DataFrame:
