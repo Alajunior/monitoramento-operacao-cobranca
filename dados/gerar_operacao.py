@@ -16,7 +16,9 @@ Como a operação funciona:
     - segunda rende mais, sexta menos; o começo do mês rende mais que o fim;
     - cada dia tem um "humor" próprio e a tarde pode render diferente da manhã: prever o fechamento é difícil
       de verdade.
-Episódio de mudança: a partir de 01/10/2026 o estoque da fase 31-90 cai 25% em 3 semanas.
+Episódios de mudança:
+    - a partir de 01/10/2026 o estoque da fase 31-90 cai 25% em 3 semanas (o volume cai, o ritmo do dia não);
+    - a partir de 05/11/2026 a tarde passa a render 15% menos (o ritmo muda: a previsão das 12h erra para cima).
 
 Tudo é sintético: nenhum dado real de cliente ou de empresa.
 """
@@ -40,6 +42,7 @@ CURVA_OPER = np.array([.45, .80, 1.0, 1.0, .70, .55, .85, 1.0, 1.0, .90, .70, .4
 BONUS_HORA = np.array([0, .10, .15, .10, 0, -.05, 0, .05, 0, .05, .15, .15, .05])          # taxa de CPC
 FATOR_DIA_SEMANA = np.array([1.08, 1.03, 1.00, 0.98, 0.92])
 EPISODIO = pd.Timestamp("2026-10-01")
+EPISODIO_TARDE = pd.Timestamp("2026-11-05")   # nova escala de turno: a tarde passa a render 15% menos
 
 
 def gerar(saida: Path = SAIDA_PADRAO, inicio="2025-05-19", fim="2026-11-19", escala=1.0, seed=42):
@@ -61,7 +64,7 @@ def gerar(saida: Path = SAIDA_PADRAO, inicio="2025-05-19", fim="2026-11-19", esc
     resto_mes = dias.to_series().groupby(dias.to_period("M")).cumcount(ascending=False).to_numpy()
     fator_mes = np.where(pos_mes < 5, 1.06, np.where(resto_mes < 3, 0.95, 1.0))
     humor = rng.lognormal(0, 0.07, nd)
-    tarde = rng.lognormal(0, 0.08, nd)                   # a tarde rende diferente da manhã
+    tarde = rng.lognormal(0, 0.08, nd) * np.where(dias >= EPISODIO_TARDE, 0.85, 1.0)   # a tarde rende diferente da manhã
     fator_dia = FATOR_DIA_SEMANA[dias.dayofweek] * fator_mes * humor
     oper_base = 60 * escala
 
