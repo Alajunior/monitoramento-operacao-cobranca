@@ -350,7 +350,7 @@ function renderPrev() {
   const proj = k => D.horas.map((h, i) => i < iH ? null : ac[iH] + (k - ac[iH]) * (perf[i] - perf[iH]) / ((1 - perf[iH]) || 1));
   grafico("gDia", {type: "line", data: {labels: D.horas.map(h => h + "h"), datasets: [
     {label: "Realizado", data: ac.map((x, i) => i <= iH ? x : null), borderColor: css("--s1"), borderWidth: 2.5, pointRadius: 3},
-    {label: "Faixa (alta)", data: proj(v.hi), borderColor: "transparent", backgroundColor: css("--s2") + "26", fill: "+1", pointRadius: 0},
+    {label: "Faixa", data: proj(v.hi), borderColor: "transparent", backgroundColor: css("--s2") + "26", fill: "+1", pointRadius: 0},
     {label: "Faixa (baixa)", data: proj(v.lo), borderColor: "transparent", pointRadius: 0},
     {label: "Previsão", data: proj(v.prev), borderColor: css("--s2"), borderDash: [6, 4], borderWidth: 2, pointRadius: 0},
     {label: "Esperado", data: perf.map(x => x * v.esperado), borderColor: css("--muted"), borderDash: [2, 3], borderWidth: 1.5, pointRadius: 0},
@@ -368,7 +368,7 @@ function renderMes() {
   const ponte = k => m.curva.map((c, i) => i === ult ? c.realizado_acum : c[k]);
   grafico("gMes", {type: "line", data: {labels: lab, datasets: [
     {label: "Realizado", data: m.curva.map(c => c.realizado_acum), borderColor: css("--s1"), borderWidth: 2.5, pointRadius: 2},
-    {label: "Faixa (alta)", data: ponte("hi"), borderColor: "transparent", backgroundColor: css("--s2") + "26", fill: "+1", pointRadius: 0},
+    {label: "Faixa", data: ponte("hi"), borderColor: "transparent", backgroundColor: css("--s2") + "26", fill: "+1", pointRadius: 0},
     {label: "Faixa (baixa)", data: ponte("lo"), borderColor: "transparent", pointRadius: 0},
     {label: "Previsão", data: ponte("prev_acum"), borderColor: css("--s2"), borderDash: [6, 4], borderWidth: 2, pointRadius: 0},
     {label: "Mês anterior", data: m.mes_anterior.slice(0, lab.length), borderColor: css("--muted"), borderWidth: 1.5, pointRadius: 0},
@@ -442,7 +442,8 @@ function iniciar() {
     render();
   };
   try { const t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
-  render();
+  if (location.hash === "#previsoes" || location.search.includes("aba=previsoes")) document.querySelector('[data-aba="pm"]').click();   // link direto para a aba
+  else render();
 }
 iniciar();
 </script>
