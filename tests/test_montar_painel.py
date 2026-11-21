@@ -58,3 +58,12 @@ def test_html_autocontido(principal, secundaria):
     assert "fetch(" not in html and 'type="module"' not in html and not re.search(r"^\s*import ", html, re.M)
     assert set(re.findall(r"https://[^\s\"'<>)]+", html)) <= {CHARTJS, FONTES, "https://fonts.googleapis.com"}
     assert len(html.encode("utf-8")) < 5 * 1024 * 1024
+
+
+def test_mes_nao_usa_o_dia_de_hoje(principal, pasta_pequena):
+    from src.indicadores import serie_diaria
+    d = serie_diaria(carregar(pasta_pequena))
+    ate_ontem = d[(d["dia"] >= "2026-11-01") & (d["dia"] <= "2026-11-18")]["cpc_unico"].sum()
+    assert principal["relogio"]["ref"] == "2026-11-18" and principal["relogio"]["du_passados"] == 13
+    assert principal["mes"]["cpc_unico"]["realizado_ate"] == ate_ontem
+    assert all(p["dia"] != "2026-11-19" or p["realizado"] is None for p in principal["mes"]["cpc_unico"]["por_dia"])

@@ -51,7 +51,7 @@ Cada gráfico tem uma caixa **📖 Como ler**.
 
 - **O erro cai ao longo do dia** (7,7% às 9h → 3,2% às 14h → 0,7% às 18h) porque, quanto mais do dia já aconteceu, menos falta prever.
 - **Viés perto de zero e cobertura perto dos 80% prometidos:** a faixa é honesta. Às 12h, a previsão acerta a **direção** (acima ou abaixo do esperado) em 82% dos dias.
-- **No mês** (CPC único, meses fechados): o erro vai de 2,0% na primeira semana para 0,5% na reta final, e a faixa de 90% acertou em 83% a 97% dos dias, conforme o trecho do mês.
+- **No mês** (CPC único, meses fechados): o erro vai de 2,0% na primeira semana para 0,4% na reta final, e a faixa de 90% acertou em 87% a 97% dos dias, conforme o trecho do mês. A previsão do mês usa só dias fechados: o dia simulado, ainda em andamento, fica de fora.
 
 ### Os dois episódios de mudança
 

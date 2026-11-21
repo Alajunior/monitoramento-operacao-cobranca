@@ -28,8 +28,8 @@ body{
 body[data-theme="midnight"]{
   --bg:radial-gradient(1200px 640px at 82% -12%,#0f2647 0%,#081729 55%,#040b16 92%);
   --text:#dbe7fb;--t2:#9fb8d9;--t3:#bcd0ec;--t4:#9fb8d9;--axis:#7f97b8;
-  --ac:#ff7a59;--ac2:#3b5b8c;--acs:#ffd2c2;--ac-at:#ff9d80;--ac-cp:#8fc1ff;
-  --acg:linear-gradient(135deg,#ff7a59,#3b5b8c);--ac-rgb:255,122,89;--ac-anim:#ff9d80;--ac-anim-glow:rgba(255,122,89,.5);
+  --ac:#ff7a59;--ac2:#3b5b8c;--acs:#ffd2c2;--ac-at:#e8c468;--ac-cp:#ffc18a;
+  --acg:linear-gradient(135deg,#ff9473,#ff7a59);--ac-rgb:255,122,89;--ac-anim:#ff9d80;--ac-anim-glow:rgba(255,122,89,.5);
   --bd:rgba(59,91,140,.42);--bd-h:rgba(59,91,140,.6);--bd-i:rgba(59,91,140,.55);
   --inp:#081729;--sticky:#050d1a;--thead:#0a1830;--tot1:#0f2040;--hover:rgba(59,91,140,.22);
   --chart-c:#9fb8d9;--chart-b:rgba(59,91,140,.25);
@@ -75,11 +75,12 @@ body[data-theme="light"] .seg{background:#fff}
 .seg>b{font-size:11px;color:var(--t2);padding:6px 10px}
 .seg button{border:0;background:transparent;color:var(--t3);font:700 12px Inter;padding:7px 15px;border-radius:24px;cursor:pointer;transition:.2s}
 .seg button.on{background:var(--acg);color:#04121f}
-body[data-theme="light"] .seg button.on,body[data-theme="midnight"] .seg button.on{color:#fff}
+body[data-theme="light"] .seg button.on{color:#fff}
 .seg button:disabled{opacity:.45;cursor:not-allowed}
 .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .tabs button{border:1px solid var(--bd-i);background:rgba(255,255,255,.04);color:var(--t3);font:700 13px Inter;padding:9px 20px;border-radius:30px;cursor:pointer;transition:.2s}
 .tabs button.on{background:var(--acg);border-color:transparent;color:#fff;box-shadow:0 8px 20px rgba(var(--ac-rgb),.35)}
+body[data-theme="midnight"] .tabs button.on{color:#04121f}
 body[data-theme="light"] .tabs button{background:#fff;color:#475569}
 body[data-theme="light"] .tabs button.on{color:#fff;background:var(--acg)}
 .viewbar{margin:-4px 0 16px}
@@ -362,7 +363,8 @@ const DADOS = /*__DADOS__*/;
 /* ======================= utilidades ======================= */
 const $ = id => document.getElementById(id);
 const QS = (s, el = document) => [...el.querySelectorAll(s)];
-const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ESTATICO = /estatico/.test(location.search);   // modo para capturas de tela: sem animação, story completo
+const RM = ESTATICO || matchMedia("(prefers-reduced-motion: reduce)").matches;
 const fI = new Intl.NumberFormat("pt-BR", {maximumFractionDigits: 0});
 const f1 = new Intl.NumberFormat("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1});
 const MENOS = "−";
@@ -423,7 +425,9 @@ const graf = {};
     }
   }
   function loop() { if (!document.hidden) frame(true); requestAnimationFrame(loop); }
-  addEventListener("resize", () => { criar(); if (RM) frame(false); });
+  addEventListener("resize", () => {
+    if (innerWidth !== W) criar(); else { H = cv.height = innerHeight; for (const p of P) p.y = Math.min(p.y, H); }
+    if (RM) frame(false); });
   addEventListener("mousemove", e => { mx = e.clientX; my = e.clientY; });
   document.addEventListener("mouseout", e => { if (!e.relatedTarget) { mx = my = -9999; } });
   criar();
@@ -555,8 +559,20 @@ function linhasTabela(p) {
   for (const f of fasesVis()) {
     L.push({nome: c.fases[f], A: deriv(agr(p.A, p.hA, [f])), B: deriv(agr(p.B, p.hB, [f], p.corteB)), cls: ""});
     const fx = (c.faixas || {})[c.fases[f]] || [];
-    if (S.aberto && fx.length > 1) fx.forEach((nm, k) =>
-      L.push({nome: "└ " + nm, A: deriv(agrFaixa(p.A, p.hA, f, k)), B: deriv(agrFaixa(p.B, p.hB, f, k, p.corteB)), cls: "fx"}));
+    if (S.aberto && fx.length > 1) {
+      const fase = L[L.length - 1];
+      const fecha = (lado, todas) => {   // arredonda cada faixa e põe o resto na última: a soma bate com a fase
+        for (const m in SHARE_DE) {
+          const alvo = Math.round(fase[lado][m]);
+          let soma = 0;
+          todas.forEach((r, k) => { if (k < todas.length - 1) { r[m] = Math.round(r[m]); soma += r[m]; } else r[m] = alvo - soma; });
+        }
+        return todas.map(deriv);
+      };
+      const fA = fecha("A", fx.map((_, k) => agrFaixa(p.A, p.hA, f, k)));
+      const fB = fecha("B", fx.map((_, k) => agrFaixa(p.B, p.hB, f, k, p.corteB)));
+      fx.forEach((nm, k) => L.push({nome: "└ " + nm, A: fA[k], B: fB[k], cls: "fx"}));
+    }
   }
   L.push({nome: "TOTAL", A: deriv(agr(p.A, p.hA, fasesVis())), B: deriv(agr(p.B, p.hB, fasesVis(), p.corteB)), cls: "tot"});
   return L;
@@ -573,7 +589,7 @@ function renderTabela(p) {
     $("tabela").innerHTML = tab((l, [, k, tipo, inv]) => { const d = delta(l.A[k], l.B[k], inv);
       return `<b>${val(l.A, k, tipo)}</b><span class="dlt ${d.cls}-t">${l.A.nh === 0 ? "—" : d.txt}</span>`; });
   } else {
-    $("tabela").innerHTML = `<div class="sub-t">🟦 Período Atual — ${rot(p.A, p.hA)}</div>` + tab((l, [, k, t]) => val(l.A, k, t)) +
+    $("tabela").innerHTML = `<div class="sub-t">🟨 Período Atual — ${rot(p.A, p.hA)}</div>` + tab((l, [, k, t]) => val(l.A, k, t)) +
       `<div class="sub-t">🟧 Período de Comparação — ${rot(p.B, p.hB)}</div>` + tab((l, [, k, t]) => val(l.B, k, t)) +
       `<div class="sub-t">📈 Análise de Variação Percentual (%)</div>` + tab((l, [, k, , inv]) => { const d = delta(l.A[k], l.B[k], inv); return `<span class="${d.cls}-t">${d.txt}</span>`; });
   }
@@ -607,7 +623,7 @@ function renderCurva(p) {
   const dA = p.A[0], dB = p.B[0], sA = serieHora(dA, p.hA, fs), sB = serieHora(dB, p.hB, fs);
   const v = (s, m) => s.map(x => x ? x[m] : null), lab = c.horas.map(h => h + "h");
   if (S.exib === "lado") {
-    z.innerHTML = `<div class="dual"><div><div class="mini-t a">🟦 Atual — ${dBRY(c.dias[dA])}</div><div class="chart"><canvas id="chCurA"></canvas></div></div>
+    z.innerHTML = `<div class="dual"><div><div class="mini-t a">🟨 Atual — ${dBRY(c.dias[dA])}</div><div class="chart"><canvas id="chCurA"></canvas></div></div>
       <div><div class="mini-t c">🟧 Comparação — ${dBRY(c.dias[dB])}</div><div class="chart"><canvas id="chCurC"></canvas></div></div></div>`;
     for (const [id, s] of [["chCurA", sA], ["chCurC", sB]]) mk(id, {data: {labels: lab, datasets: [
       {type: "bar", label: "Acionamentos", data: v(s, "fups"), backgroundColor: "rgba(185,138,61,.55)", borderRadius: 4, yAxisID: "y"},
@@ -668,7 +684,7 @@ function renderMesHero() {
       <div class="mcv" style="color:var(--acs)">${fmtInd(ind, s.realizado)}</div><div class="mcs">realizado no mês<br>sem previsão — chegam em lote</div>
       <div class="mcs" style="margin-top:6px">vs mesmo ponto do mês anterior: <b class="${cor3(v)}">${pct(v, 0)}</b></div></button>`;
   }).join("");
-  $("cardMes").innerHTML = `<div class="ctitle">📅 Fechamento do mês · ${r.mes}<span class="sp"></span><span class="muted">dados fechados até ${dBR(DADOS.hoje)} · recalcula 1x por dia</span></div>
+  $("cardMes").innerHTML = `<div class="ctitle">📅 Fechamento do mês · ${r.mes}<span class="sp"></span><span class="muted">dados fechados até ${dBR(r.ref)} · recalcula 1x por dia</span></div>
     <div class="relogio"><b>Dia útil ${r.du_passados} de ${r.du_total}</b> · dia ${r.dia} de ${r.dias_mes}</div>
     <div class="bar8"><i style="width:${pr * 100}%"></i></div>
     <div class="muted" style="margin-top:6px">${pctAbs(pr, 0)} dos dias úteis já passaram · clique num indicador para ver como a previsão foi construída</div>
@@ -682,7 +698,7 @@ function etapasStory() {
   if (!c.mes[ind]) {
     const s = c.mes_sem_prev[ind], mx = 1.08 * Math.max(s.realizado, s.mesmo_ponto_ant || 0) || 1;
     return {mx, ind, et: [
-      {t: "Onde estamos", txt: `Até ${dBR(DADOS.hoje)}: <span class="sn">${fmtInd(ind, s.realizado)}</span> de ${NOMES_IND[ind].toLowerCase()} no mês.`,
+      {t: "Onde estamos", txt: `Até ${dBR(c.relogio.ref)}: <span class="sn">${fmtInd(ind, s.realizado)}</span> de ${NOMES_IND[ind].toLowerCase()} no mês.`,
        row: {lab: "Realizado no mês", segs: [{a: 0, b: s.realizado, cor: "var(--ac)", txt: fmtInd(ind, s.realizado)}]}},
       {t: "Por que não há previsão", txt: `Pagamentos chegam <b>em lote</b> e dependem de boletos emitidos dias antes; prever pelo ritmo do mês erraria muito. Por isso o painel mostra o realizado e a comparação com o <b>mesmo ponto do mês anterior</b>: <span class="sn">${fmtInd(ind, s.mesmo_ponto_ant)}</span>.`,
        row: {lab: "Mesmo ponto, mês ant.", segs: [{a: 0, b: s.mesmo_ponto_ant, cor: "rgba(190,196,204,.55)", txt: fmtInd(ind, s.mesmo_ponto_ant)}]}}]};
@@ -694,8 +710,8 @@ function etapasStory() {
     segsDow.push({a: x, b: x + v, cor: i % 2 ? "rgba(91,229,154,.36)" : "rgba(91,229,154,.6)", txt: `${g.n}× ${DSEM[g.dow]}`, tip: `${g.n} ${DSEM_L[g.dow]}${g.n > 1 ? "s" : ""} × ${fmtInd(ind, g.media)}`}); x += v; });
   const ajSobe = m.prev >= m.blend, vsAnt = m.total_mes_anterior ? m.prev / m.total_mes_anterior - 1 : null;
   return {mx, ind, et: [
-    {t: "Onde estamos", txt: `Até ${dBR(DADOS.hoje)} foram <span class="sn">${fmtInd(ind, R)}</span> — dia útil ${m.du_passados} de ${m.du_total}.`,
-     row: {lab: "Realizado até hoje", segs: [{a: 0, b: R, cor: "var(--ac)", txt: fmtInd(ind, R)}]}},
+    {t: "Onde estamos", txt: `Até ${dBR(c.relogio.ref)} (último dia fechado) foram <span class="sn">${fmtInd(ind, R)}</span> — dia útil ${m.du_passados} de ${m.du_total}.`,
+     row: {lab: `Realizado até ${dBR(c.relogio.ref)}`, segs: [{a: 0, b: R, cor: "var(--ac)", txt: fmtInd(ind, R)}]}},
     {t: "O que ainda falta, dia a dia", txt: m.falta_dow.map(g => `<span class="sg">${g.n} ${DSEM_L[g.dow]}${g.n > 1 ? "s" : ""} × ${fmtInd(ind, g.media)}</span>`).join("") +
        `<br>Cada dia da semana tem seu ritmo (média recente, com mais peso nas últimas semanas). Realizado ${fmtInd(ind, R)} + falta ${fmtInd(ind, falta)} = <span class="sn">${fmtInd(ind, m.por_dow)}</span>.`,
      row: {lab: "Ritmo por dia da semana", segs: segsDow, mk: {v: m.por_dow, txt: fmtInd(ind, m.por_dow)}}},
@@ -807,7 +823,7 @@ function renderDia() {
   destruir("chFcst"); destruir("chPred");
   if (!v) { $("cardDia").innerHTML = `<div class="ctitle">🎯 Previsão de fechamento do dia</div><div class="muted">Histórico insuficiente para prever.</div>`; return; }
   const selo = `● Erro médio da previsão nos últimos ${c.confiab.dias} dias úteis: ${pctAbs(pl[10])} às 10h · ${pctAbs(pl[12])} às 12h · ${pctAbs(pl[14])} às 14h`;
-  const botoesEsc = ["__TOTAL__", ...c.fases].map(f => `<button class="${f === esc ? "on" : ""}" data-esc="${f}">${f === "__TOTAL__" ? "Total" : f} <span>±${pctAbs(f === "__TOTAL__" ? pl[12] : c.placar_fases[f], 0)}</span></button>`).join("");
+  const botoesEsc = ["__TOTAL__", ...c.fases].map(f => `<button class="${f === esc ? "on" : ""}" data-esc="${f}">${f === "__TOTAL__" ? "Total" : f}${(f === "__TOTAL__" ? pl[12] : c.placar_fases[f]) != null ? ` <span>±${pctAbs(f === "__TOTAL__" ? pl[12] : c.placar_fases[f], 0)}</span>` : ""}</button>`).join("");
   const ac = acumDia(HOJE(), fi), perf = perfil(fi), real = esc === "__TOTAL__" ? c.fechamento_real_hoje.total : c.fechamento_real_hoje.fases[esc];
   const acComp = comp != null ? acumDia(comp, fi) : null, ritmo = acComp && acComp[iH] ? ac[iH] / acComp[iH] - 1 : null;
   const fixa = S.modoPrev === "fixa" && vf && H > 9;
@@ -819,7 +835,7 @@ function renderDia() {
                        ["Desvio até " + H + "h", `<span class="${cor3(desvio)}">${pct(desvio)}</span>`, "realizado vs o que a previsão fixa projetava"]);
   else tiles.push(["Previsão de fechamento", `<span class="up-t">${fI.format(v.prev)}</span>`, `faixa provável ${fI.format(v.lo)} – ${fI.format(v.hi)}`]);
   tiles.push(["Esperado do dia", fI.format(v.esperado), "média dos últimos 20 dias úteis"],
-             ["Previsão vs esperado", `<span class="${cor3(vsEsp)}">${pct(vsEsp)}</span>`, vsEsp >= 0 ? "▲ acima do esperado" : "▼ abaixo do esperado"],
+             [fixa ? "Previsão ao vivo vs esperado" : "Previsão vs esperado", `<span class="${cor3(vsEsp)}">${pct(vsEsp)}</span>`, vsEsp >= 0 ? "▲ acima do esperado" : "▼ abaixo do esperado"],
              ["Ritmo vs comparação", `<span class="${cor3(ritmo)}">${pct(ritmo)}</span>`, comp != null ? `até ${H}h vs ${dBR(c.dias[comp])}` : "sem comparação"]);
   const nm = esc === "__TOTAL__" ? "a carteira" : `a fase ${esc}`, fr = [];
   if (fixa) { const lo9 = projetar(ac, perf, 1, vf.lo)[iH], hi9 = projetar(ac, perf, 1, vf.hi)[iH];
@@ -830,8 +846,9 @@ function renderDia() {
   for (const f in dec) if (esc === "__TOTAL__" || f === esc) for (const k of ["estoque", "esforco", "taxa"]) comps.push([dec[f][k], k, f]);
   comps.sort((a, b) => a[0] - b[0]);
   const NC = {estoque: "estoque", esforco: "esforço (acionamentos por contrato)", taxa: "taxa de contato"};
-  if (comps.length && comps[0][0] < 0) fr.push(`Principal ofensor vs ${dBR(c.dias[comp])}: <b>${NC[comps[0][1]]}</b> em <b>${comps[0][2]}</b> (${MENOS}${fI.format(Math.abs(comps[0][0]))}).`);
-  else if (comps.length) fr.push(`Nenhum componente puxou o CPC único para baixo vs ${dBR(c.dias[comp])}.`);
+  const dTot = Object.keys(dec).filter(f => esc === "__TOTAL__" || f === esc).reduce((s, f) => s + (dec[f].delta || 0), 0);
+  if (comps.length && dTot >= 0) fr.push(`Vs ${dBR(c.dias[comp])} o CPC único está acima até ${H}h; ${comps[0][0] < 0 ? `o único freio foi <b>${NC[comps[0][1]]}</b> em <b>${comps[0][2]}</b> (${MENOS}${fI.format(Math.abs(comps[0][0]))})` : "nenhum componente puxou para baixo"}.`);
+  else if (comps.length && comps[0][0] < 0) fr.push(`Principal ofensor vs ${dBR(c.dias[comp])}: <b>${NC[comps[0][1]]}</b> em <b>${comps[0][2]}</b> (${MENOS}${fI.format(Math.abs(comps[0][0]))}).`);
   if (H < 10) fr.push("Início do dia — a previsão fica mais firme a partir das ~10h.");
   else if (v.prev < v.esperado && H < 20) fr.push(`Para chegar ao esperado faltariam <b>${fI.format(v.esperado - v.prev)}</b> acima do ritmo atual nas próximas ${20 - H}h.`);
   else if (H < 20) fr.push("No ritmo atual o dia supera o esperado.");
@@ -934,13 +951,13 @@ function renderConf() {
       <div class="tile"><div class="tl">Acerto de direção</div><div class="tv">${pctAbs(k.direcao, 0)}</div><div class="ts">disse "acima/abaixo do esperado" e acertou</div></div>
       <div class="tile"><div class="tl">Viés</div><div class="tv">${pct(k.vies)}</div><div class="ts">positivo = otimista</div></div></div>
     <div class="mesgrid"><div class="chart h260"><canvas id="chConfDia"></canvas></div><div class="tabwrap">
-      <table class="mtab"><tr><th>Previsão do mês ×</th>${pm.map(p => `<th>${T[p.trecho]}</th>`).join("")}</tr>
+      ${pm.length ? "" : '<div class="muted">O placar do mês aparece depois do primeiro mês fechado.</div>'}<table class="mtab${pm.length ? "" : " oculto"}"><tr><th>Previsão do mês ×</th>${pm.map(p => `<th>${T[p.trecho]}</th>`).join("")}</tr>
       <tr><td>Erro médio</td>${pm.map(p => `<td>${pctAbs(p.wmape)}</td>`).join("")}</tr>
       <tr><td>Viés</td>${pm.map(p => `<td>${pct(p.vies)}</td>`).join("")}</tr>
       <tr><td>Faixa acertou</td>${pm.map(p => `<td><b>${pctAbs(p.cobertura, 0)}</b></td>`).join("")}</tr></table>
       <div class="muted" style="margin-top:8px">Meses fechados, CPC único. A faixa do mês mira 90% dos dias.</div></div></div>
     <div class="chart-help" style="margin-top:12px">📖 O erro da previsão do dia cai conforme o dia avança: quanto mais já aconteceu, menos falta prever. <b>Cobertura</b> perto do alvo indica uma faixa honesta — nem estreita demais (promete certeza que não tem), nem larga demais (não ajuda a decidir).</div>`;
-  mk("chConfDia", {type: "line", data: {labels: k.erro_por_hora.map(x => x.hora + "h"), datasets: [{label: "Erro médio", data: k.erro_por_hora.map(x => x.wmape * 100),
+  mk("chConfDia", {type: "line", data: {labels: k.erro_por_hora.map(x => x.hora + "h"), datasets: [{label: "Erro médio", data: k.erro_por_hora.map(x => x.wmape == null ? null : x.wmape * 100),
     borderColor: "#5be59a", backgroundColor: "#5be59a", borderWidth: 2, pointRadius: 4, tension: .25}]},
     options: {plugins: {legend: {display: false}, title: {display: true, text: "Erro médio da previsão do dia, por hora em que é feita"},
       tooltip: {callbacks: {label: i => `Erro médio: ${f1.format(i.raw)}%`}}},
@@ -971,7 +988,7 @@ function renderPlacar() {
 function renderPM(trocouInd) {
   if (!C().mes[S.ind] && !C().mes_sem_prev[S.ind]) S.ind = "cpc_unico";
   renderMesHero(); renderCurvaMes(); renderDia(); renderCanal(); renderFunilMes(); renderConf(); renderPlacar();
-  if (trocouInd || !S.st.dados || S.st.dados.ind !== S.ind) { pararStory(); renderStory(); irEtapa(0); if (!RM) tocarStory(false); }
+  if (trocouInd || !S.st.dados || S.st.dados.ind !== S.ind) { pararStory(); renderStory(); irEtapa(ESTATICO ? S.st.n - 1 : 0); if (!RM) tocarStory(false); }
 }
 
 /* ======================= controles ======================= */

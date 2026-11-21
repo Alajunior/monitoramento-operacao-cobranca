@@ -39,4 +39,5 @@ def test_shares_das_faixas_somam_um(cartoes):
 def test_carteira_principal_nao_mudou(pasta_pequena):
     # a principal precisa continuar igual à v1 (README e placar): o gerador novo usa outro gerador aleatório
     p = pd.read_csv(pasta_pequena / "producao.csv")
-    assert {"pagos", "valor_pago"} <= set(p.columns)
+    assert {"pagos", "valor_pago", "risco_cpc"} <= set(p.columns)
+    assert (int(p["fups"].sum()), int(p["cpc"].sum())) == (485910, 44303)   # totais da v1 nesta base: não mudam

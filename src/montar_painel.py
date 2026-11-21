@@ -22,7 +22,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 PASTA_RAIZ = RAIZ / "dados" / "operacao"
 TEMPLATE = Path(__file__).resolve().parent / "painel.html"
 CHARTJS = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
-FONTES = "https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@600&display=swap"
+FONTES = "https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@600&display=swap"
 HORAS = list(range(8, 21))
 METRICAS = ["fups", "cpc", "cpca", "boleto", "risco", "risco_cpc", "propostas", "pagos", "valor_pago"]
 METRICAS_FAIXA = ["fups", "cpc", "cpca", "boleto", "risco", "estoque"]
@@ -89,7 +89,7 @@ def montar_carteira(t: dict, slug: str, nome: str, hoje, com_mes: bool,
         fx = t["faixas"][t["faixas"]["dia"].isin(dias)]
         faixas_nomes = {f: list(dict.fromkeys(fx[fx["fase"] == f]["faixa"])) for f in fases}
         idx = fx.set_index(["dia", "fase", "faixa"])
-        faixa_share = [[[[round(float(idx.loc[(d, f, k), f"share_{m}"]), 4) for m in METRICAS_FAIXA]
+        faixa_share = [[[[round(float(idx.loc[(d, f, k), f"share_{m}"]), 6) for m in METRICAS_FAIXA]
                          for k in faixas_nomes[f]] for f in fases] for d in dias]
 
     pos = {d: k for k, d in enumerate(dias)}
@@ -142,16 +142,19 @@ def montar_carteira(t: dict, slug: str, nome: str, hoje, com_mes: bool,
                "erro_por_hora": [{"hora": int(r.hora), "wmape": _r(r.wmape, 4)} for r in pl.itertuples()]}
 
     # ---------- mês ----------
-    mes = hoje.to_period("M")
-    no_mes = diaria[diaria["dia"].dt.to_period("M") == mes]
+    # O mês usa só dias FECHADOS (até o dia útil anterior ao "hoje" simulado): o fechamento de hoje ainda é
+    # desconhecido na previsão do dia, então não pode aparecer no mês.
+    ref = passados[-1]
+    mes = ref.to_period("M")
+    no_mes = diaria[(diaria["dia"].dt.to_period("M") == mes) & (diaria["dia"] <= ref)]
     du = sorted(no_mes["dia"].unique())
     mes_ant = [d for d in todos if d.to_period("M") == mes - 1][:len(du)]   # mesmo número de dias úteis
     prev_mes = {}
     for ind in MES_PREV:
-        r = prever_mes(diaria, hoje, ind)
+        r = prever_mes(diaria[diaria["dia"] <= ref], ref, ind)
         r["vs_ant"] = _r(r["prev"] / r["total_mes_anterior"] - 1, 4) if r["total_mes_anterior"] else None
         prev_mes[ind] = r
-    pm = p[p["dia"].dt.to_period("M") == mes]
+    pm = p[(p["dia"].dt.to_period("M") == mes) & (p["dia"] <= ref)]
     pa = p[p["dia"].isin(mes_ant)]
     sem_prev = {m: {"realizado": _r(pm[m].sum(), 1), "mesmo_ponto_ant": _r(pa[m].sum(), 1)} for m in MES_SEM_PREV}
     canal = pm.groupby("canal")[["boleto", "pagos", "valor_pago"]].sum()
@@ -168,11 +171,12 @@ def montar_carteira(t: dict, slug: str, nome: str, hoje, com_mes: bool,
     total = diaria.groupby("dia")["cpc_unico"].sum()
     serie_mes = pd.DataFrame([{"dia": d, **{k: r[k] for k in ("prev", "lo", "hi")},
                                "realizado_ate": float(total[(total.index.to_period("M") == mes) & (total.index <= d)].sum())}
-                              for d in du for r in [prever_mes(diaria, d, "cpc_unico")]])
+                              for d in du for r in [prever_mes(diaria[diaria["dia"] <= ref], d, "cpc_unico")]])
+    # meses com registro completo (o registro pode começar no meio de um mês: esse fica de fora em tudo)
+    completos = [m for m, g in reg_mes.groupby(reg_mes["dia"].dt.to_period("M")) if g["dia"].dt.day.min() <= 7]
+    reg_mes = reg_mes[reg_mes["dia"].dt.to_period("M").isin(completos)]
     fechados = []
     for m, g in reg_mes[reg_mes["dia"].dt.to_period("M") < mes].groupby(reg_mes["dia"].dt.to_period("M")):
-        if g["dia"].dt.day.min() > 7:   # o registro começou no meio deste mês: placar incompleto, fica de fora
-            continue
         tr = placar_mes(g).set_index("trecho")
         fechados.append({"mes": m.strftime("%m/%Y"), "real": _r(g["real"].iloc[0], 0),
                          **{k: _r(tr["wmape"].get(k), 4) for k in ["inicio", "meio", "3/4", "final"]},
@@ -188,8 +192,8 @@ def montar_carteira(t: dict, slug: str, nome: str, hoje, com_mes: bool,
             "meses_fechados": fechados, "registro_desde": f"{passados[-dias_registro]:%Y-%m-%d}" if passados else None,
             "ultimos_dias": _registros(ult[["dia", "prev", "lo", "hi", "real", "erro", "dentro", "erro_5d"]]),
             "mes": prev_mes, "mes_sem_prev": sem_prev, "boletos_canal": boletos_canal, "funil_mes": funil_mes,
-            "relogio": {"du_passados": len(du), "du_total": prev_mes["cpc_unico"]["du_total"],
-                        "dia": int(hoje.day), "dias_mes": int(hoje.days_in_month), "mes": mes.strftime("%m/%Y")}}
+            "relogio": {"du_passados": len(du), "du_total": prev_mes["cpc_unico"]["du_total"], "ref": f"{ref:%Y-%m-%d}",
+                        "dia": int(ref.day), "dias_mes": int(ref.days_in_month), "mes": mes.strftime("%m/%Y")}}
 
 
 def montar_dados(pasta_raiz=PASTA_RAIZ, hoje="2026-11-19", **kw) -> dict:
