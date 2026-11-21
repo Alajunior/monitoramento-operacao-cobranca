@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitoramento da Operação</title>
+<script src="__CHARTJS__"></script>
+</head>
+<body>
+<h1 id="titulo">Monitoramento da Operação</h1>
+<canvas id="g"></canvas>
+<script>
+const DADOS = /*__DADOS__*/;
+document.getElementById("titulo").textContent += " — " + DADOS.hoje;
+</script>
+</body>
+</html>
