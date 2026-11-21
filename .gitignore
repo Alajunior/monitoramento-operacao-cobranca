@@ -1,0 +1,4 @@
+.superpowers/
+dados/operacao/
+__pycache__/
+.pytest_cache/
