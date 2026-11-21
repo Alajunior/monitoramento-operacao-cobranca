@@ -4,14 +4,447 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monitoramento da Operação</title>
+<meta name="description" content="Painel de monitoramento de uma operação de cobrança (dados sintéticos) com previsão de fechamento do dia e do mês.">
 <script src="__CHARTJS__"></script>
+<style>
+:root{
+  --bg:#f6f6f4; --surface:#fcfcfb; --surface-2:#f0efec; --border:#e4e3df;
+  --text:#0b0b0b; --text-2:#52514e; --muted:#7a7974;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+  --good:#0ca30c; --bad:#d03b3b; --accent:#2a78d6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121211; --surface:#1a1a19; --surface-2:#232321; --border:#383835;
+    --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e88;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --good:#0ca30c; --bad:#e66767; --accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121211; --surface:#1a1a19; --surface-2:#232321; --border:#383835;
+  --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e88;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --good:#0ca30c; --bad:#e66767; --accent:#3987e5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px}
+.topo{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;max-width:1280px;margin:0 auto}
+h1{font-size:18px;margin:0}
+.sub{color:var(--text-2);font-size:12px}
+main{max-width:1280px;margin:0 auto;padding:16px}
+.abas{display:flex;gap:6px}
+button,select,input{font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.hora{display:flex;align-items:center;gap:8px}
+.hora input{width:150px;padding:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px}
+.linha{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.rot{color:var(--text-2);font-size:12px;margin-right:2px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.kpi{background:var(--surface-2);border-radius:10px;padding:10px}
+.kpi .n{font-size:12px;color:var(--text-2)}
+.kpi .v{font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
+.kpi .c{font-size:12px;color:var(--text-2)}
+.d{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.d.up{color:var(--good)} .d.down{color:var(--bad)} .d.eq{color:var(--text-2)}
+.grade2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:14px}
+.tab{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:12px;color:var(--text-2);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:3px 10px;font-size:12px;cursor:pointer}
+.graf{position:relative;height:280px}
+details.ler{margin-top:8px;background:var(--surface-2);border-radius:8px;padding:6px 10px;color:var(--text-2);font-size:13px}
+details.ler summary{cursor:pointer;color:var(--text)}
+.cockpit{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.aviso{border-radius:8px;padding:8px 12px;font-size:13px;background:var(--surface-2)}
+.aviso.alerta{border-left:4px solid var(--bad)} .aviso.ok{border-left:4px solid var(--good)}
+.frase{font-size:14px;margin:8px 0}
+.oculto{display:none}
+@media (max-width:700px){header{position:static}.graf{height:240px}}
+footer{max-width:1280px;margin:0 auto;padding:4px 16px 24px;color:var(--muted);font-size:12px}
+</style>
 </head>
 <body>
-<h1 id="titulo">Monitoramento da Operação</h1>
-<canvas id="g"></canvas>
+<header>
+  <div class="topo">
+    <div><h1>Monitoramento da Operação</h1>
+      <div class="sub">Carteira de cobrança fictícia · dados sintéticos · "hoje" simulado: <b id="hojeTxt"></b></div></div>
+    <div class="hora"><span class="rot">Agora:</span><input type="range" id="hora" min="9" max="20" step="1" value="12"
+      aria-label="Hora simulada"><b id="horaTxt"></b></div>
+    <div class="abas" role="tablist">
+      <button class="on" data-aba="hh" role="tab">⏱ Hora a hora</button>
+      <button data-aba="pm" role="tab">📈 Previsões &amp; Mês</button>
+      <button id="tema" title="Alternar tema" aria-label="Alternar tema claro/escuro">◐</button>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- ======================= HORA A HORA ======================= -->
+<section id="aba-hh">
+  <div class="card">
+    <h2>Comparação</h2>
+    <div class="linha"><span class="rot">Modo</span>
+      <button class="on" data-modo="dia">Dia × Dia</button><button data-modo="periodo">Período × Período</button></div>
+    <div id="ctl-dia">
+      <div class="linha"><span class="rot">Atual</span><select id="diaA"></select>
+        <span class="rot">contra</span><select id="diaB"></select>
+        <button data-atalho="D-1">D-1</button><button data-atalho="D-7">D-7</button><button data-atalho="mes_anterior">Mês anterior</button></div>
+      <div class="linha"><span class="rot">Horas</span>
+        <button class="on" data-agr="acum">Acumulado até agora</button><button data-agr="esp">Horas específicas</button>
+        <span id="horasEsp" class="chips oculto"></span></div>
+    </div>
+    <div id="ctl-periodo" class="oculto">
+      <div class="linha"><span class="rot">A</span><select id="pA1"></select><span class="rot">até</span><select id="pA2"></select>
+        <span class="rot">B</span><select id="pB1"></select><span class="rot">até</span><select id="pB2"></select>
+        <button data-patalho="30">A − 1 mês</button><button data-patalho="7">A − 7 dias</button></div>
+    </div>
+    <div class="linha"><span class="rot">Canal</span><select id="canal"><option value="">Todos</option></select>
+      <span class="rot">Fases</span><span id="chipsFases" class="chips"></span></div>
+    <div class="kpis" id="kpis"></div>
+    <details class="ler"><summary>📖 Como ler</summary>Cada cartão compara o período <b>atual</b> com o de
+      <b>comparação</b>. ▲ verde = 3% ou mais acima; ▼ vermelho = 3% ou mais abaixo. CPC único conta contratos
+      distintos (o mesmo cliente alcançado duas vezes conta uma). CPC único/Estoque mostra quanto da carteira foi
+      alcançado.</details>
+  </div>
+
+  <div class="card">
+    <h2>Por fase</h2>
+    <div class="linha"><button class="on" data-vis="compacta">Compacta</button><button data-vis="detalhada">Detalhada</button></div>
+    <div class="tab" id="tabFase"></div>
+    <details class="ler"><summary>📖 Como ler</summary>Fase = faixa de atraso do contrato. Na visão compacta, cada
+      célula traz o valor atual e a variação contra a comparação. Na detalhada, as três tabelas (atual, comparação,
+      variação) aparecem separadas.</details>
+  </div>
+
+  <div class="grade2">
+    <div class="card"><h2>Curva do dia</h2>
+      <div class="linha"><span class="rot">Indicador</span><select id="metCurva"><option value="fups">FUPS</option>
+        <option value="cpc">CPC</option><option value="cpca">CPCA</option><option value="boleto">Boletos</option></select></div>
+      <div class="graf"><canvas id="gCurva"></canvas></div>
+      <details class="ler"><summary>📖 Como ler</summary>Barras = o indicador em cada hora no período atual; linha
+        tracejada = a comparação. Mostra se a operação está rendendo no ritmo de sempre e em que hora ficou para trás.</details></div>
+    <div class="card"><h2>Taxa de CPC por fase</h2><div class="graf"><canvas id="gConv"></canvas></div>
+      <details class="ler"><summary>📖 Como ler</summary>%CPC = contatos com a pessoa certa ÷ acionamentos. Fases
+        com atraso maior costumam ter taxa menor: o cliente some.</details></div>
+  </div>
+  <div class="card"><h2>Funil</h2><div class="graf" style="height:220px"><canvas id="gFunil"></canvas></div>
+    <details class="ler"><summary>📖 Como ler</summary>Do acionamento ao boleto: de cada 100 acionamentos, quantos
+      viram contato com a pessoa certa (CPC), quantos viram acordo (CPCA) e quantos viram boleto.</details></div>
+</section>
+
+<!-- ======================= PREVISÕES & MÊS ======================= -->
+<section id="aba-pm" class="oculto">
+  <div class="card">
+    <h2>Fechamento do dia — CPC único</h2>
+    <div class="linha" id="botoesFase"></div>
+    <div class="cockpit" id="cockpit"></div>
+    <div class="frase" id="frase"></div>
+    <div class="aviso" id="alerta"></div>
+    <div class="linha" style="margin-top:10px"><button id="revelar">👁 Revelar o fechamento real</button><span class="rot" id="revelado"></span></div>
+    <div class="graf" style="height:320px"><canvas id="gDia"></canvas></div>
+    <details class="ler" open><summary>📖 Como ler</summary>A linha azul é o CPC único acumulado até <b>agora</b>
+      (mova o controle "Agora" no topo). A laranja tracejada é a previsão de como o dia vai fechar, com a faixa onde o
+      fechamento deve cair em 8 de cada 10 dias. A cinza pontilhada é o <b>esperado</b> (média dos últimos 20 dias).
+      A previsão usa a <b>razão de funil</b>: em dias normais, o total do dia é um múltiplo estável do que já foi
+      feito até a hora. Clique em "Revelar" para ver como o dia realmente terminou.</details>
+  </div>
+
+  <div class="card">
+    <h2>Fechamento do mês</h2>
+    <div class="linha"><span class="rot">Indicador</span><select id="indMes"></select></div>
+    <div class="cockpit" id="cardsMes"></div>
+    <div class="graf" style="height:300px;margin-top:10px"><canvas id="gMes"></canvas></div>
+    <details class="ler"><summary>📖 Como ler</summary>Acumulado do mês por dia útil. Azul = realizado; laranja
+      tracejado = previsão até o fim do mês, com faixa de 90%; cinzas = mesmos dias úteis dos dois meses anteriores.
+      A previsão é a média de dois ritmos (linear e por dia da semana), corrigida pelo viés histórico.</details>
+  </div>
+
+  <div class="card">
+    <h2>Placar: a previsão acerta?</h2>
+    <div class="grade2">
+      <div><div class="sub" style="margin-bottom:6px">Previsão do dia, por hora de corte (dias passados)</div><div class="tab" id="tabPlacar"></div></div>
+      <div><div class="sub" style="margin-bottom:6px">Previsão do mês, por trecho do mês</div><div class="tab" id="tabPlacarMes"></div></div>
+    </div>
+    <div class="sub" style="margin:12px 0 6px">Últimos 10 dias (previsão das 12h)</div>
+    <div class="tab" id="tabUltimos"></div>
+    <details class="ler"><summary>📖 Como ler</summary><b>Erro (WMAPE)</b> = soma dos erros ÷ soma do realizado: o
+      erro em % do volume. <b>Viés</b> positivo = previsão otimista. <b>Cobertura</b> = % de dias em que o real caiu
+      dentro da faixa; o alvo é 80%. Cada dia foi previsto só com os dias anteriores a ele. ⚠ marca os dias em que o
+      erro médio das 12h nos últimos 5 dias passou do limite: foi quando a tarde começou a render menos (nova escala
+      de turno) e o ajuste de viés levou alguns dias para absorver.</details>
+  </div>
+</section>
+</main>
+<footer>Projeto de portfólio · dados 100% sintéticos · gerado em Python, gráficos com Chart.js.</footer>
+
 <script>
 const DADOS = /*__DADOS__*/;
-document.getElementById("titulo").textContent += " — " + DADOS.hoje;
+const D = DADOS, NF = D.fases.length, NC = D.canais.length, HOJE = D.dias.length - 1;
+const M = Object.fromEntries(D.metricas.map((m, i) => [m, i]));
+const fmt = new Intl.NumberFormat("pt-BR", {maximumFractionDigits: 0});
+const fmtR = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL", maximumFractionDigits: 0});
+const pct = (x, c = 1) => x == null || !isFinite(x) ? "–" : (x * 100).toFixed(c).replace(".", ",") + "%";
+const dataBR = s => s.slice(8, 10) + "/" + s.slice(5, 7);
+const $ = id => document.getElementById(id);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const S = {hora: 12, aba: "hh", modo: "dia", agr: "acum", esp: new Set([9, 10, 11]), vis: "compacta",
+           canal: "", ocultas: new Set(), fasePrev: "__TOTAL__", revelar: false, ind: "cpc_unico"};
+const graficos = {};
+
+// ---------------- agregação ----------------
+function horasDoDia(d, horas) { return d === HOJE ? horas.filter(h => h <= S.hora) : horas; }
+function canais() { return S.canal === "" ? [...Array(NC).keys()] : [D.canais.indexOf(S.canal)]; }
+function fasesVis() { return [...Array(NF).keys()].filter(f => !S.ocultas.has(D.fases[f])); }
+
+function agrDia(d, horas, fases) {
+  const hs = horasDoDia(d, horas), cs = canais(), r = {fups: 0, cpc: 0, cpca: 0, boleto: 0, risco: 0, propostas: 0};
+  for (const h of hs) for (const f of fases) for (const c of cs)
+    for (const m in r) r[m] += D.producao[m][d][h - 8][f][c];
+  const hmax = hs.length ? Math.max(...hs) : null;
+  r.cpc_unico = hmax == null ? 0 : fases.reduce((s, f) => s + D.cpcu_acum[d][f][hmax - 8], 0);
+  r.operadores = hs.length ? Math.max(...hs.map(h => D.operadores[d][h - 8])) : 0;
+  r.estoque = fases.reduce((s, f) => s + D.estoque[d][f], 0);
+  return r;
+}
+function somar(lista) {
+  const r = {}; for (const x of lista) for (const k in x) r[k] = (r[k] || 0) + x[k];
+  r.operadores /= lista.length || 1; r.estoque /= lista.length || 1; return r;
+}
+function horasSel() {
+  return S.agr === "acum" ? D.horas.filter(h => h <= S.hora) : [...S.esp].sort((a, b) => a - b);
+}
+function periodos() {   // devolve {A: [dias], B: [dias], horas}
+  if (S.modo === "dia") return {A: [+$("diaA").value], B: [+$("diaB").value], horas: horasSel()};
+  const rng = (a, b) => { const x = [], i = +$(a).value, j = +$(b).value; for (let k = Math.min(i, j); k <= Math.max(i, j); k++) x.push(k); return x; };
+  return {A: rng("pA1", "pA2"), B: rng("pB1", "pB2"), horas: D.horas};
+}
+function agr(dias, horas, fases) { return somar(dias.map(d => agrDia(d, horas, fases))); }
+function derivados(r) {
+  const q = (a, b) => b ? a / b : null;
+  return {...r, pct_cpc: q(r.cpc, r.fups), pct_cpca: q(r.cpca, r.fups), conversao: q(r.boleto, r.cpca),
+          cpcu_est: q(r.cpc_unico, r.estoque)};
+}
+function delta(a, b) {
+  if (a == null || b == null || !b) return {txt: "–", cls: "eq"};
+  const v = a / b - 1, cls = v >= 0.03 ? "up" : v <= -0.03 ? "down" : "eq";
+  return {txt: (cls === "up" ? "▲ " : cls === "down" ? "▼ " : "● ") + (v >= 0 ? "+" : "") + pct(v), cls};
+}
+
+// ---------------- hora a hora ----------------
+const KPIS = [["FUPS", "fups", fmt.format], ["CPC", "cpc", fmt.format], ["CPC único", "cpc_unico", fmt.format],
+  ["CPCA (acordos)", "cpca", fmt.format], ["Boletos", "boleto", fmt.format], ["Risco gerado", "risco", fmtR.format],
+  ["Propostas", "propostas", fmt.format], ["Operadores (pico)", "operadores", fmt.format],
+  ["% CPC", "pct_cpc", x => pct(x)], ["% CPCA", "pct_cpca", x => pct(x)], ["Conversão boleto/acordo", "conversao", x => pct(x)],
+  ["CPC único / Estoque", "cpcu_est", x => pct(x, 2)]];
+
+function renderKpis(A, B) {
+  $("kpis").innerHTML = KPIS.map(([nome, k, f]) => {
+    const dd = delta(A[k], B[k]);
+    return `<div class="kpi"><div class="n">${nome}</div><div class="v">${A[k] == null ? "–" : f(A[k])}</div>
+      <div class="c">antes: ${B[k] == null ? "–" : f(B[k])} <span class="d ${dd.cls}">${dd.txt}</span></div></div>`;
+  }).join("");
+}
+const COLS = [["FUPS", "fups", fmt.format], ["CPC", "cpc", fmt.format], ["CPC único", "cpc_unico", fmt.format],
+  ["CPCA", "cpca", fmt.format], ["Boletos", "boleto", fmt.format], ["% CPC", "pct_cpc", x => pct(x)],
+  ["Conversão", "conversao", x => pct(x)], ["Estoque", "estoque", fmt.format]];
+
+function renderTabela(p) {
+  const linhas = fasesVis().map(f => [D.fases[f], derivados(agr(p.A, p.horas, [f])), derivados(agr(p.B, p.horas, [f]))]);
+  linhas.push(["Total", derivados(agr(p.A, p.horas, fasesVis())), derivados(agr(p.B, p.horas, fasesVis()))]);
+  const cab = "<tr><th>Fase</th>" + COLS.map(c => `<th>${c[0]}</th>`).join("") + "</tr>";
+  const tabela = (titulo, cel) => `${titulo ? `<div class="sub" style="margin:8px 0 4px">${titulo}</div>` : ""}<table>${cab}` +
+    linhas.map(([n, a, b]) => `<tr><td>${n === "Total" ? "<b>Total</b>" : n}</td>` + COLS.map(c => `<td>${cel(a, b, c)}</td>`).join("") + "</tr>").join("") + "</table>";
+  if (S.vis === "compacta") {
+    $("tabFase").innerHTML = tabela("", (a, b, [, k, f]) => { const d = delta(a[k], b[k]); return `${a[k] == null ? "–" : f(a[k])} <span class="d ${d.cls}">${d.txt.replace(/^[▲▼●] /, "")}</span>`; });
+  } else {
+    $("tabFase").innerHTML = tabela("Atual", (a, b, [, k, f]) => a[k] == null ? "–" : f(a[k])) +
+      tabela("Comparação", (a, b, [, k, f]) => b[k] == null ? "–" : f(b[k])) +
+      tabela("Variação", (a, b, [, k]) => { const d = delta(a[k], b[k]); return `<span class="d ${d.cls}">${d.txt}</span>`; });
+  }
+}
+function grafico(id, cfg) {
+  if (graficos[id]) graficos[id].destroy();
+  Chart.defaults.color = css("--text-2"); Chart.defaults.borderColor = css("--border");
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  graficos[id] = new Chart($(id), cfg);
+}
+const baseOpts = (extra = {}) => ({responsive: true, maintainAspectRatio: false, animation: false,
+  interaction: {mode: "index", intersect: false}, plugins: {legend: {position: "bottom", labels: {boxWidth: 12}}}, ...extra});
+
+function renderCurva(p) {
+  const m = $("metCurva").value, nome = $("metCurva").selectedOptions[0].text, fs = fasesVis();
+  const porHora = dias => D.horas.map(h => {
+    const v = dias.map(d => (d === HOJE && h > S.hora) ? null : agrDia(d, [h], fs)[m]);
+    return v.includes(null) ? null : v.reduce((s, x) => s + x, 0) / v.length;
+  });
+  grafico("gCurva", {data: {labels: D.horas.map(h => h + "h"), datasets: [
+    {type: "bar", label: nome + " (atual)", data: porHora(p.A), backgroundColor: css("--s1"), borderRadius: 4},
+    {type: "line", label: nome + " (comparação)", data: porHora(p.B), borderColor: css("--s2"), borderDash: [5, 4], borderWidth: 2, pointRadius: 3}]},
+    options: baseOpts({scales: {y: {title: {display: true, text: nome + " por hora"}}}})});
+}
+function renderConv(p) {
+  const fs = fasesVis();
+  grafico("gConv", {type: "bar", data: {labels: fs.map(f => D.fases[f]), datasets: [
+    {label: "Atual", data: fs.map(f => derivados(agr(p.A, p.horas, [f])).pct_cpc * 100), backgroundColor: css("--s1"), borderRadius: 4},
+    {label: "Comparação", data: fs.map(f => derivados(agr(p.B, p.horas, [f])).pct_cpc * 100), backgroundColor: css("--text-2") + "88", borderRadius: 4}]},
+    options: baseOpts({scales: {y: {title: {display: true, text: "% CPC"}}},
+      plugins: {legend: {position: "bottom"}, tooltip: {callbacks: {label: c => `${c.dataset.label}: ${c.raw.toFixed(1).replace(".", ",")}%`}}}})});
+}
+function renderFunil(A, B) {
+  const et = ["fups", "cpc", "cpca", "boleto"], nomes = ["FUPS", "CPC", "CPCA", "Boleto"];
+  const por100 = r => et.map(k => r.fups ? r[k] / r.fups * 100 : 0);
+  grafico("gFunil", {type: "bar", data: {labels: nomes, datasets: [
+    {label: "Atual (por 100 acionamentos)", data: por100(A), backgroundColor: css("--s1"), borderRadius: 4},
+    {label: "Comparação", data: por100(B), backgroundColor: css("--text-2") + "88", borderRadius: 4}]},
+    options: baseOpts({indexAxis: "y", scales: {x: {type: "logarithmic", title: {display: true, text: "por 100 acionamentos (escala log)"}}},
+      plugins: {legend: {position: "bottom"}, tooltip: {callbacks: {label: c => `${c.dataset.label}: ${c.raw.toFixed(2).replace(".", ",")}`}}}})});
+}
+function renderHH() {
+  const p = periodos(), fs = fasesVis();
+  const A = derivados(agr(p.A, p.horas, fs)), B = derivados(agr(p.B, p.horas, fs));
+  renderKpis(A, B); renderTabela(p); renderCurva(p); renderConv(p); renderFunil(A, B);
+}
+
+// ---------------- previsões ----------------
+function perfilMedio(escopo) {   // forma média do CPC único acumulado nos 20 dias anteriores (0..1)
+  const ini = Math.max(0, HOJE - 20), soma = D.horas.map(() => 0);
+  for (let d = ini; d < HOJE; d++) D.horas.forEach((h, i) => {
+    soma[i] += escopo === "__TOTAL__" ? D.cpcu_acum[d].reduce((s, f) => s + f[i], 0) : D.cpcu_acum[d][D.fases.indexOf(escopo)][i];
+  });
+  return soma.map(v => v / soma[soma.length - 1]);
+}
+function acumHoje(escopo) {
+  return D.horas.map((h, i) => escopo === "__TOTAL__" ? D.cpcu_acum[HOJE].reduce((s, f) => s + f[i], 0) : D.cpcu_acum[HOJE][D.fases.indexOf(escopo)][i]);
+}
+function renderPrev() {
+  const pr = D.previsao_hoje[String(S.hora)], esc = S.fasePrev;
+  $("botoesFase").innerHTML = ["__TOTAL__", ...D.fases].map(f => {
+    const e = f === "__TOTAL__" ? (D.placar_dia.find(x => x.hora === 12) || {}).wmape : D.placar_fases[f];
+    return `<button class="${f === esc ? "on" : ""}" data-fp="${f}">${f === "__TOTAL__" ? "Total" : f} <span class="sub">±${pct(e, 0)} às 12h</span></button>`;
+  }).join("");
+  document.querySelectorAll("[data-fp]").forEach(b => b.onclick = () => { S.fasePrev = b.dataset.fp; renderPrev(); });
+  if (!pr) { $("cockpit").innerHTML = "<div class='aviso'>Histórico insuficiente para prever.</div>"; return; }
+  const v = esc === "__TOTAL__" ? pr.total : pr.fases[esc];
+  const real = esc === "__TOTAL__" ? D.fechamento_real_hoje.total : D.fechamento_real_hoje.fases[esc];
+  const dv = delta(v.prev, v.esperado);
+  $("cockpit").innerHTML = [
+    ["Realizado até " + S.hora + "h", fmt.format(v.realizado), ""],
+    ["Previsão de fechamento", fmt.format(v.prev), `faixa ${fmt.format(v.lo)} – ${fmt.format(v.hi)}`],
+    ["Esperado do dia", fmt.format(v.esperado), "média dos últimos 20 dias úteis"],
+    ["Previsão vs esperado", `<span class="d ${dv.cls}" style="font-size:18px">${dv.txt}</span>`, ""],
+    ...(S.revelar ? [["Fechamento real", fmt.format(real), (real >= v.lo && real <= v.hi ? "✔ dentro da faixa" : "✖ fora da faixa") + ` · erro ${pct(v.prev / real - 1)}`]] : [])
+  ].map(([n, val, c]) => `<div class="kpi"><div class="n">${n}</div><div class="v">${val}</div><div class="c">${c}</div></div>`).join("");
+  $("frase").textContent = "🔎 " + D.ofensor[String(S.hora)] + " (comparado com a média dos 20 dias anteriores na mesma hora)";
+  const a = D.alerta;
+  $("alerta").className = "aviso " + (a.ativo ? "alerta" : "ok");
+  $("alerta").innerHTML = (a.ativo ? "⚠ <b>Alerta de deriva:</b> " : "✔ <b>Sem deriva:</b> ") +
+    `erro médio da previsão das 12h nos últimos 5 dias = ${pct(a.erro_12h_5d)} (limite ${pct(a.limite, 0)}).`;
+  $("revelado").textContent = S.revelar ? "" : "o dia simulado já aconteceu: dá para conferir";
+  const perf = perfilMedio(esc), ac = acumHoje(esc), iH = S.hora - 8;
+  const proj = k => D.horas.map((h, i) => i < iH ? null : ac[iH] + (k - ac[iH]) * (perf[i] - perf[iH]) / ((1 - perf[iH]) || 1));
+  grafico("gDia", {type: "line", data: {labels: D.horas.map(h => h + "h"), datasets: [
+    {label: "Realizado", data: ac.map((x, i) => i <= iH ? x : null), borderColor: css("--s1"), borderWidth: 2.5, pointRadius: 3},
+    {label: "Faixa (alta)", data: proj(v.hi), borderColor: "transparent", backgroundColor: css("--s2") + "26", fill: "+1", pointRadius: 0},
+    {label: "Faixa (baixa)", data: proj(v.lo), borderColor: "transparent", pointRadius: 0},
+    {label: "Previsão", data: proj(v.prev), borderColor: css("--s2"), borderDash: [6, 4], borderWidth: 2, pointRadius: 0},
+    {label: "Esperado", data: perf.map(x => x * v.esperado), borderColor: css("--muted"), borderDash: [2, 3], borderWidth: 1.5, pointRadius: 0},
+    ...(S.revelar ? [{label: "Real (revelado)", data: ac.map((x, i) => i >= iH ? x : null), borderColor: css("--s3"), borderWidth: 2, pointRadius: 2}] : [])]},
+    options: baseOpts({plugins: {legend: {position: "bottom", labels: {boxWidth: 12, filter: i => !i.text.startsWith("Faixa (baixa)")}}},
+      scales: {y: {title: {display: true, text: "CPC único acumulado"}}}})});
+}
+const NOMES_IND = {fups: "FUPS", cpc: "CPC", cpc_unico: "CPC único", cpca: "CPCA (acordos)", boleto: "Boletos"};
+function renderMes() {
+  const m = D.mes[S.ind];
+  $("cardsMes").innerHTML = [["Realizado no mês", fmt.format(m.realizado_ate)], ["Previsão de fechamento", fmt.format(m.prev)],
+    ["Faixa de 90%", fmt.format(m.lo) + " – " + fmt.format(m.hi)]]
+    .map(([n, v]) => `<div class="kpi"><div class="n">${n}</div><div class="v">${v}</div></div>`).join("");
+  const lab = m.curva.map(c => dataBR(c.dia)), ult = m.curva.findIndex(c => c.realizado_acum == null) - 1;
+  const ponte = k => m.curva.map((c, i) => i === ult ? c.realizado_acum : c[k]);
+  grafico("gMes", {type: "line", data: {labels: lab, datasets: [
+    {label: "Realizado", data: m.curva.map(c => c.realizado_acum), borderColor: css("--s1"), borderWidth: 2.5, pointRadius: 2},
+    {label: "Faixa (alta)", data: ponte("hi"), borderColor: "transparent", backgroundColor: css("--s2") + "26", fill: "+1", pointRadius: 0},
+    {label: "Faixa (baixa)", data: ponte("lo"), borderColor: "transparent", pointRadius: 0},
+    {label: "Previsão", data: ponte("prev_acum"), borderColor: css("--s2"), borderDash: [6, 4], borderWidth: 2, pointRadius: 0},
+    {label: "Mês anterior", data: m.mes_anterior.slice(0, lab.length), borderColor: css("--muted"), borderWidth: 1.5, pointRadius: 0},
+    {label: "Mês retrasado", data: m.mes_retrasado.slice(0, lab.length), borderColor: css("--muted"), borderDash: [2, 3], borderWidth: 1.5, pointRadius: 0}]},
+    options: baseOpts({plugins: {legend: {position: "bottom", labels: {boxWidth: 12, filter: i => !i.text.startsWith("Faixa (baixa)")}}},
+      scales: {y: {title: {display: true, text: NOMES_IND[S.ind] + " acumulado"}}}})});
+}
+function renderPlacar() {
+  const t = (cab, linhas) => `<table><tr>${cab.map(c => `<th>${c}</th>`).join("")}</tr>${linhas.map(l => `<tr>${l.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</table>`;
+  $("tabPlacar").innerHTML = t(["Hora de corte", "Erro (WMAPE)", "Viés", "Cobertura", "Dias"],
+    D.placar_dia.map(p => [p.hora + "h", pct(p.wmape), (p.vies >= 0 ? "+" : "") + pct(p.vies), pct(p.cobertura, 0), fmt.format(p.dias)]));
+  const NT = {inicio: "Início (1–7)", meio: "Meio (8–15)", "3/4": "3/4 (16–22)", final: "Final (23+)"};
+  $("tabPlacarMes").innerHTML = t(["Trecho", "Erro (WMAPE)", "Viés", "Cobertura"],
+    D.placar_mes.map(p => [NT[p.trecho], pct(p.wmape), (p.vies >= 0 ? "+" : "") + pct(p.vies), pct(p.cobertura, 0)]));
+  $("tabUltimos").innerHTML = t(["Dia", "Previsão 12h", "Faixa", "Real", "Erro", "Na faixa?", "Erro 5 dias"],
+    D.ultimos_dias.map(u => [dataBR(u.dia), fmt.format(u.prev), fmt.format(u.lo) + "–" + fmt.format(u.hi), fmt.format(u.real),
+      (u.erro >= 0 ? "+" : "") + pct(u.erro), u.dentro ? "✔" : "✖", (u.erro_5d > D.alerta.limite ? "⚠ " : "") + pct(u.erro_5d)]));
+}
+function renderPM() { renderPrev(); renderMes(); renderPlacar(); }
+function render() { $("horaTxt").textContent = S.hora + "h"; S.aba === "hh" ? renderHH() : renderPM(); }
+
+// ---------------- controles ----------------
+function idxAtalho(d, tipo) {
+  const alvo = new Date(D.dias[d] + "T00:00:00");
+  if (tipo === "D-1") alvo.setDate(alvo.getDate() - 1);
+  else if (tipo === "D-7") alvo.setDate(alvo.getDate() - 7);
+  else alvo.setMonth(alvo.getMonth() - 1);
+  const iso = alvo.toISOString().slice(0, 10);
+  let k = d; while (k > 0 && D.dias[k] > iso) k--;
+  return k;
+}
+function grupo(attr, fn) {
+  document.querySelectorAll(`[data-${attr}]`).forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll(`[data-${attr}]`).forEach(x => x.classList.toggle("on", x === b)); fn(b.dataset[attr]); render();
+  }));
+}
+function iniciar() {
+  $("hojeTxt").textContent = D.hoje.split("-").reverse().join("/");
+  const opts = D.dias.map((d, i) => `<option value="${i}">${dataBR(d)} (${["dom","seg","ter","qua","qui","sex","sáb"][new Date(d + "T00:00:00").getDay()]})</option>`).join("");
+  ["diaA", "diaB", "pA1", "pA2", "pB1", "pB2"].forEach(id => $(id).innerHTML = opts);
+  $("diaA").value = HOJE; $("diaB").value = idxAtalho(HOJE, "D-7");
+  $("pA2").value = HOJE; $("pA1").value = Math.max(0, HOJE - 4); $("pB2").value = HOJE - 5; $("pB1").value = Math.max(0, HOJE - 9);
+  D.canais.forEach(c => $("canal").insertAdjacentHTML("beforeend", `<option>${c}</option>`));
+  $("chipsFases").innerHTML = D.fases.map(f => `<label><input type="checkbox" checked data-fase="${f}"> ${f}</label>`).join("");
+  $("horasEsp").innerHTML = D.horas.map(h => `<label><input type="checkbox" ${S.esp.has(h) ? "checked" : ""} data-h="${h}"> ${h}h</label>`).join("");
+  $("indMes").innerHTML = Object.entries(NOMES_IND).map(([k, n]) => `<option value="${k}" ${k === S.ind ? "selected" : ""}>${n}</option>`).join("");
+
+  $("hora").oninput = e => { S.hora = +e.target.value; render(); };
+  document.querySelectorAll("[data-aba]").forEach(b => b.onclick = () => {
+    document.querySelectorAll("[data-aba]").forEach(x => x.classList.toggle("on", x === b));
+    S.aba = b.dataset.aba; $("aba-hh").classList.toggle("oculto", S.aba !== "hh"); $("aba-pm").classList.toggle("oculto", S.aba !== "pm"); render();
+  });
+  grupo("modo", v => { S.modo = v; $("ctl-dia").classList.toggle("oculto", v !== "dia"); $("ctl-periodo").classList.toggle("oculto", v !== "periodo"); });
+  grupo("agr", v => { S.agr = v; $("horasEsp").classList.toggle("oculto", v !== "esp"); });
+  grupo("vis", v => { S.vis = v; });
+  document.querySelectorAll("[data-atalho]").forEach(b => b.onclick = () => { $("diaB").value = idxAtalho(+$("diaA").value, b.dataset.atalho); render(); });
+  document.querySelectorAll("[data-patalho]").forEach(b => b.onclick = () => {
+    const tipo = b.dataset.patalho === "30" ? "mes_anterior" : "D-7";
+    $("pB1").value = idxAtalho(+$("pA1").value, tipo); $("pB2").value = idxAtalho(+$("pA2").value, tipo); render();
+  });
+  ["diaA", "diaB", "pA1", "pA2", "pB1", "pB2", "canal", "metCurva"].forEach(id => $(id).onchange = () => { S.canal = $("canal").value; render(); });
+  $("chipsFases").onchange = e => { e.target.checked ? S.ocultas.delete(e.target.dataset.fase) : S.ocultas.add(e.target.dataset.fase);
+    if (fasesVis().length === 0) { e.target.checked = true; S.ocultas.delete(e.target.dataset.fase); } render(); };
+  $("horasEsp").onchange = e => { const h = +e.target.dataset.h; e.target.checked ? S.esp.add(h) : S.esp.delete(h); if (!S.esp.size) { S.esp.add(h); e.target.checked = true; } render(); };
+  $("indMes").onchange = e => { S.ind = e.target.value; render(); };
+  $("revelar").onclick = () => { S.revelar = !S.revelar; $("revelar").textContent = S.revelar ? "🙈 Esconder o fechamento real" : "👁 Revelar o fechamento real"; render(); };
+  $("tema").onclick = () => {
+    const atual = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.dataset.theme = atual === "dark" ? "light" : "dark";
+    try { localStorage.setItem("tema", document.documentElement.dataset.theme); } catch (e) {}
+    render();
+  };
+  try { const t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  render();
+}
+iniciar();
 </script>
 </body>
 </html>
