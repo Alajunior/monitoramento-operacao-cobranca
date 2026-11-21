@@ -151,6 +151,8 @@ def gerar(saida: Path = SAIDA_PADRAO, inicio="2025-05-19", fim="2026-11-19", esc
     fx = pd.DataFrame(faixas)
     cols = [f"share_{m}" for m in METRICAS_FAIXA]
     fx[cols] = fx[cols] / fx.groupby(["dia", "fase"])[cols].transform("sum")   # soma exata 1 após arredondar
+    # valor em risco dos contratos alcançados (CPC): o que estava em jogo nas conversas certas
+    prod["risco_cpc"] = np.round(prod["cpc"] * ticket * rng2.lognormal(0, 0.3, len(prod)), 2)
 
     # ---------- eventos de CPC: contratos sorteados entre os alcançáveis (30% do estoque) ----------
     idx = np.repeat(np.arange(len(prod)), prod["cpc"].to_numpy())

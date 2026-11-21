@@ -33,3 +33,12 @@ def test_registro_nao_usa_o_dia(pasta_pequena):
     assert linha["prev"] == prever(acum, diaria, d, 12)["total"]["prev"]
     assert linha["real"] == diaria[diaria.dia == d]["cpc_unico"].sum()
     assert len(ultimos_dias(reg, n=2)) == 2
+
+
+def test_registro_mes_ignora_mes_nao_fechado(pasta_pequena):
+    from src.placar import reconstruir_registro_mes
+    t = carregar(pasta_pequena)
+    diaria = serie_diaria(t)
+    dias = sorted(diaria["dia"].unique())[-30:]   # outubro (fechado) e novembro (até 19/11, aberto)
+    reg = reconstruir_registro_mes(diaria, dias)
+    assert len(reg) and (reg["dia"].dt.to_period("M") < pd.Period("2026-11", "M")).all()

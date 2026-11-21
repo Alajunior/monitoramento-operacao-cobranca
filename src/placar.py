@@ -24,9 +24,9 @@ def reconstruir_registro_dia(acum, diaria, dias, horas=(10, 12, 14)) -> pd.DataF
                 continue
             for escopo, v in [("__TOTAL__", r["total"]), *r["fases"].items()]:
                 rv = real.loc[d].sum() if escopo == "__TOTAL__" else real.get((d, escopo), 0)
-                linhas.append({"dia": d, "hora": h, "escopo": escopo, "prev": v["prev"], "lo": v["lo"],
+                linhas.append({"dia": d, "hora": h, "escopo": escopo, "prev": v["prev"], "lo": v["lo"], "esperado": v["esperado"],
                                "hi": v["hi"], "real": float(rv)})
-    return pd.DataFrame(linhas, columns=["dia", "hora", "escopo", "prev", "lo", "hi", "real"])
+    return pd.DataFrame(linhas, columns=["dia", "hora", "escopo", "prev", "lo", "hi", "esperado", "real"])
 
 
 def _medidas(g: pd.DataFrame) -> pd.Series:
@@ -43,15 +43,19 @@ def placar(registro: pd.DataFrame, escopo: str = "__TOTAL__") -> pd.DataFrame:
 
 def reconstruir_registro_mes(diaria, dias, indicador="cpc_unico") -> pd.DataFrame:
     total = diaria.groupby("dia")[indicador].sum()
+    ultimo = total.index.max()
     linhas = []
     for d in dias:
         d = pd.Timestamp(d)
+        fim_mes = pd.bdate_range(d.to_period("M").start_time, d.to_period("M").end_time.normalize())[-1]
+        if fim_mes > ultimo:   # mês ainda aberto: não há "real" para comparar
+            continue
         r = prever_mes(diaria, d, indicador)
         mes = d.to_period("M")
         real = total[(total.index >= mes.start_time) & (total.index <= mes.end_time)].sum()
         linhas.append({"dia": d, "indicador": indicador, "prev": r["prev"], "lo": r["lo"], "hi": r["hi"],
                        "real": float(real)})
-    return pd.DataFrame(linhas)
+    return pd.DataFrame(linhas, columns=["dia", "indicador", "prev", "lo", "hi", "real"]).astype({"dia": "datetime64[ns]"})
 
 
 def placar_mes(registro_mes: pd.DataFrame) -> pd.DataFrame:
