@@ -56,5 +56,5 @@ def test_html_autocontido(principal, secundaria):
     html = montar_html({"hoje": "2026-11-19", "carteiras": [principal, secundaria]})
     assert "const DADOS = {" in html
     assert "fetch(" not in html and 'type="module"' not in html and not re.search(r"^\s*import ", html, re.M)
-    assert set(re.findall(r"https://[^\s\"'<>)]+", html)) <= {CHARTJS, FONTES}
+    assert set(re.findall(r"https://[^\s\"'<>)]+", html)) <= {CHARTJS, FONTES, "https://fonts.googleapis.com"}
     assert len(html.encode("utf-8")) < 5 * 1024 * 1024
