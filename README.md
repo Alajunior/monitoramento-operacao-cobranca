@@ -1,5 +1,13 @@
 # Monitoramento da operação de cobrança + previsão de fechamento
 
+[![CI](https://github.com/Alajunior/monitoramento-operacao-cobranca/actions/workflows/pages.yml/badge.svg)](https://github.com/Alajunior/monitoramento-operacao-cobranca/actions/workflows/pages.yml) ![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white) [![Painel ao vivo](https://img.shields.io/badge/painel-ao%20vivo-2ea44f)](https://alajunior.github.io/monitoramento-operacao-cobranca/) ![Dados 100% sintéticos](https://img.shields.io/badge/dados-100%25%20sint%C3%A9ticos-6e7781)
+
+> **Em 30 segundos**
+>
+> - **Problema:** a operação precisa saber cedo como o dia e o mês vão fechar, e confiar no número.
+> - **Como:** previsão por razão de funil com peso nos dias recentes e faixa de 80% calculada fora da amostra, placar de acertos no próprio painel e decomposição LMDI do resultado.
+> - **Resultado:** em 250 dias úteis fora da amostra, WMAPE de 6,5% às 10h e de 3,2% às 14h, com viés entre +0,3% e +0,4%. No mês, o erro cai de 2,0% na primeira semana para 0,4% na reta final.
+
 Painel que uma operação de cobrança acompanha o dia todo: produção hora a hora de três carteiras, comparação com qualquer dia ou período, desempenho por fase e faixa de atraso, funil do acionamento ao boleto. Dentro dele, um modelo que **prevê como o dia e o mês vão fechar**, **explica de onde veio o número** e **mostra no placar se acerta**.
 
 **▶ Abrir o painel:** https://Alajunior.github.io/monitoramento-operacao-cobranca/ (abre no navegador, sem instalar nada; funciona no celular)
